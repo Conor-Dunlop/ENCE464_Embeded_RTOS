@@ -86,26 +86,48 @@ void test_write_and_read_indices_are_independent(void)
 
 void test_buffer_is_clean_after_full_buffer_cycle_completed(void)
 {
-    TEST_IGNORE(); // Remove this when the test is written
+    int32_t first_value = readCircBuf(&buff);
 
     // Arange: given buffer is fully written to and and then fully read from
+    for (uint8_t i = 0; i < STANDARD_TEST_CAPACITY; i++)
+    {
+      // Arrange: given one element is written
+      writeCircBuf(&buff, 20 + i);
+
+      // Act: when buffer is read
+      int32_t value = readCircBuf(&buff);
+    }
 
     // Act: when buffer is read
+    freeCircBuf(&buff);
+    int32_t value = readCircBuf(&buff);
 
     // Assert: same behaviour as when buffer was empty
+    TEST_ASSERT_EQUAL(first_value, value);
 }
 
 void test_buffer_is_circular(void)
 {
-    TEST_IGNORE(); // Remove this when the test is written
-
     // Arange: given buffer is fully written to and then fully read from
+    for (uint8_t i = 0; i < STANDARD_TEST_CAPACITY; i++)
+    {
+      // Arrange: given one element is written
+      writeCircBuf(&buff, 20 + i);
+
+      // Act: when buffer is read
+      int32_t value = readCircBuf(&buff);
+    }
+
+    uint8_t i = 5;
 
     // Arrange: given a new value is written
+    writeCircBuf(&buff, 20 + i);
 
     // Act: when buffer is read
+    int32_t value = readCircBuf(&buff);
 
     // Assert: the last written element is returned
+    TEST_ASSERT_EQUAL(20 + i, value);
 }
 
 void test_no_values_overwritten_after_full(void)
