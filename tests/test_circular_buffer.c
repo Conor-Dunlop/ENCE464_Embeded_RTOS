@@ -31,6 +31,12 @@ void assertReadingSequence(uint16_t start, uint16_t size)
 
 int32_t * reconstructBufferWithSize(uint16_t size)
 {
+    if (size <= 0) {
+        return NULL;
+    }
+    if (size > _I8_MAX) {
+        return NULL;
+    }
   freeCircBuf(&buff);
   return initCircBuf(&buff, size);
 }
@@ -134,7 +140,7 @@ void test_no_values_overwritten_after_full(void)
 {
 
     // Arrange: given buffer is filled to capacity
-    for (uint8_t i = 0; i < STANDARD_TEST_CAPACITY-1; i++)
+    for (uint8_t i = 0; i < STANDARD_TEST_CAPACITY; i++)
     {
       writeCircBuf(&buff, 20 + i);
     }
