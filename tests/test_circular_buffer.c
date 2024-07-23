@@ -192,3 +192,12 @@ void test_capacity_higher_than_max_invalid(void)
     // Assert: the return value of initCircBuf is NULL
     TEST_ASSERT_EQUAL(res, NULL);
 }
+
+void test_max_valid_initialisation(void)
+{
+    //Arrange/Act
+    initCircBuf(&buff, STANDARD_TEST_CAPACITY);
+
+    // Assert: the size of the buffer has been initialized as expected
+    TEST_ASSERT_EQUAL(buff.size, STANDARD_TEST_CAPACITY);
+}
