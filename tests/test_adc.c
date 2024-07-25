@@ -12,8 +12,6 @@ DEFINE_FFF_GLOBALS;
 #define ADC_BUF_SIZE 10
 #define FAKE_ADC_VALUE 0xFACCEADC // No K's in hex
 
-// #define CHECK_CALLED(func_name) TEST_ASSERT_EQUAL(1, func_name.call_count) 
-
 /* Helper functions */      
 void reset_fff(void)
 {
@@ -175,5 +173,42 @@ void test_adc_poll_triggers_adc(void)
 }
 
 /* Test cases - ADCIntHandler */
+void test_adc_correct_channel_and_sequence(void)
+{
+    // Act
+    initADC();
+
+    //Assert
+    TEST_ASSERT_EQUAL(3, ADCSequenceConfigure_fake.arg1_val);  
+    TEST_ASSERT_EQUAL(0, ADCSequenceStepConfigure_fake.arg2_val);
+}
+
+void test_adc_writes_to_correct_buffer(void)
+{
+    // Act
+    initADC();
+    circBuf_t* ptr = get_circBuf_ptr_and_reset_fff();
+
+    //Assert
+    TEST_ASSERT_EQUAL(ptr, 0); // This needs to be changed.
+}
+
+void test_adc_writes_correct_value_to_buffer(void)
+{
+    // Act
+    initADC();
+
+    //Assert
+}
+
+void test_adc_clears_interrupt_signal(void)
+{
+    // Act
+    initADC();
+
+    //Assert
+
+}
 
 /* Test cases - readADC */
+
