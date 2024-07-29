@@ -149,122 +149,108 @@ void flashMessage(char* toShow)
 }
 
 
+unsigned long lastIoProcess= 0;
+unsigned long lastAcclProcess = 0;
+unsigned long lastDisplayProcess = 0;
+
+uint8_t stepHigh = false;
+vector3_t mean;
+
 /***********************************************************
- * Main Loop
+ * FreeRTOS System Tasks
  ***********************************************************/
 
-int main(void)
-{
-    unsigned long lastIoProcess= 0;
-    unsigned long lastAcclProcess = 0;
-    unsigned long lastDisplayProcess = 0;
+// Poll the buttons and potentiometer
+void poll_butt_and_pot(void* args) {
+    unsigned long currentTick = readCurrentTick(); // Timings for tasks should not rely on this function, rather xDelayTaskUntil()
 
-    #ifdef SERIAL_PLOTTING_ENABLED
-    unsigned long lastSerialProcess = 0;
-    #endif // SERIAL_PLOTTING_ENABLED
-
-    uint8_t stepHigh = false;
-    vector3_t mean;
-
-    // Device state
-    // Omnibus struct that holds loads of info about the device's current state, so it can be updated from any function
-    deviceState.displayMode = DISPLAY_STEPS;
-    deviceState.stepsTaken = 0;
-    deviceState.currentGoal = TARGET_DISTANCE_DEFAULT;
-    deviceState.debugMode = false;
-    deviceState.displayUnits= UNITS_SI;
-    deviceState.workoutStartTick = 0;
-    deviceState.flashTicksLeft = 0;
-    deviceState.flashMessage = calloc(MAX_STR_LEN + 1, sizeof(char));
-
-    // Init libs
-    initClock();
-    displayInit();
-    btnInit();
-    initSysTick();
-    acclInit();
-    initADC();
-
-    #ifdef SERIAL_PLOTTING_ENABLED
-    SerialInit ();
-    #endif // SERIAL_PLOTTING_ENABLED
-
-
-    while(1)
-    {
-        unsigned long currentTick = readCurrentTick();
-
-        // Poll the buttons and potentiometer
-        if (lastIoProcess + RATE_SYSTICK_HZ/RATE_IO_HZ < currentTick) {
-            lastIoProcess = currentTick;
+    if (lastIoProcess + RATE_SYSTICK_HZ/RATE_IO_HZ < currentTick) {
+        lastIoProcess = currentTick;
 
 //            updateSwitch();
-            btnUpdateState(&deviceState);
-            pollADC();
+        btnUpdateState(&deviceState);
+        pollADC();
 
-            deviceState.newGoal = readADC() * POT_SCALE_COEFF; // Set the new goal value, scaling to give the desired range
-            deviceState.newGoal = (deviceState.newGoal / STEP_GOAL_ROUNDING) * STEP_GOAL_ROUNDING; // Round to the nearest 100 steps
-            if (deviceState.newGoal == 0) { // Prevent a goal of zero, instead setting to the minimum goal (this also makes it easier to test the goal-reaching code on a small but non-zero target)
-                deviceState.newGoal = STEP_GOAL_ROUNDING;
-            }
+        deviceState.newGoal = readADC() * POT_SCALE_COEFF; // Set the new goal value, scaling to give the desired range
+        deviceState.newGoal = (deviceState.newGoal / STEP_GOAL_ROUNDING) * STEP_GOAL_ROUNDING; // Round to the nearest 100 steps
+        if (deviceState.newGoal == 0) { // Prevent a goal of zero, instead setting to the minimum goal (this also makes it easier to test the goal-reaching code on a small but non-zero target)
+            deviceState.newGoal = STEP_GOAL_ROUNDING;
         }
+    }
+}
 
-        // Read and process the accelerometer
-        if (lastAcclProcess + RATE_SYSTICK_HZ/RATE_ACCL_HZ < currentTick) {
-            lastAcclProcess = currentTick;
+// Read and process the accelerometer
+void read_process_accl(void* args) {
+    unsigned long currentTick = readCurrentTick(); // Timings for tasks should not rely on this function, rather xDelayTaskUntil()
 
-            acclProcess();
+    if (lastAcclProcess + RATE_SYSTICK_HZ/RATE_ACCL_HZ < currentTick) {
+        lastAcclProcess = currentTick;
 
-            mean = acclMean();
+        acclProcess();
 
-            uint16_t combined = sqrt(mean.x*mean.x + mean.y*mean.y + mean.z*mean.z);
+        mean = acclMean();
 
-            if (combined >= STEP_THRESHOLD_HIGH && stepHigh == false) {
-                stepHigh = true;
-                deviceState.stepsTaken++;
+        uint16_t combined = sqrt(mean.x*mean.x + mean.y*mean.y + mean.z*mean.z);
 
-                // flash a message if the user has reached their goal
-                if (deviceState.stepsTaken == deviceState.currentGoal && deviceState.flashTicksLeft == 0) {
-                    flashMessage("Goal reached!");
-                }
+        if (combined >= STEP_THRESHOLD_HIGH && stepHigh == false) {
+            stepHigh = true;
+            deviceState.stepsTaken++;
 
-            } else if (combined <= STEP_THRESHOLD_LOW) {
-                stepHigh = false;
-            }
-
-            // Don't start the workout until the user begins walking
-            if (deviceState.stepsTaken == 0) {
-                deviceState.workoutStartTick = currentTick;
-            }
-        }
-
-        // Write to the display
-        if (lastDisplayProcess + RATE_SYSTICK_HZ/RATE_DISPLAY_UPDATE_HZ < currentTick) {
-            lastDisplayProcess = currentTick;
-
-            if (deviceState.flashTicksLeft > 0) {
-                deviceState.flashTicksLeft--;
+            // flash a message if the user has reached their goal
+            if (deviceState.stepsTaken == deviceState.currentGoal && deviceState.flashTicksLeft == 0) {
+                flashMessage("Goal reached!");
             }
 
-            uint16_t secondsElapsed = (currentTick - deviceState.workoutStartTick)/RATE_SYSTICK_HZ;
-            displayUpdate(deviceState, secondsElapsed);
+        } else if (combined <= STEP_THRESHOLD_LOW) {
+            stepHigh = false;
         }
 
-        // Send to USB via serial
-        #ifdef SERIAL_PLOTTING_ENABLED
-        if (lastSerialProcess + RATE_SYSTICK_HZ/RATE_SERIAL_PLOT_HZ < currentTick) {
-            lastSerialProcess = currentTick;
-
-            SerialPlot(deviceState.stepsTaken, mean.x, mean.y, mean.z);
+        // Don't start the workout until the user begins walking
+        if (deviceState.stepsTaken == 0) {
+            deviceState.workoutStartTick = currentTick;
         }
-        #endif // SERIAL_PLOTTING_ENABLED
+    }
+}
 
+// Write to the display
+void write_to_display(void* args) {
+    unsigned long currentTick = readCurrentTick(); // Timings for tasks should not rely on this function, rather xDelayTaskUntil()
 
+    if (lastDisplayProcess + RATE_SYSTICK_HZ/RATE_DISPLAY_UPDATE_HZ < currentTick) {
+        lastDisplayProcess = currentTick;
 
-        // Protection in the unlikely case the device is left running for long enough for the system tick counter to overflow
-        // This prevents the last process ticks from being 'in the future', which would prevent the update functions from being called,
-        // rendering the device inoperable.
-        // This would take ~49 days, but is not impossible if the user forgets to turn it off before they put it away (assuming th battery lasts that long)
+        if (deviceState.flashTicksLeft > 0) {
+            deviceState.flashTicksLeft--;
+        }
+
+        uint16_t secondsElapsed = (currentTick - deviceState.workoutStartTick)/RATE_SYSTICK_HZ;
+        displayUpdate(deviceState, secondsElapsed);
+    }
+}
+
+// Send to USB via serial
+void send_USB_via_serial(void* args) {
+    // unsigned long currentTick = readCurrentTick(); // Timings for tasks should not rely on this function, rather xDelayTaskUntil()
+
+    #ifdef SERIAL_PLOTTING_ENABLED
+    if (lastSerialProcess + RATE_SYSTICK_HZ/RATE_SERIAL_PLOT_HZ < currentTick) {
+        lastSerialProcess = currentTick;
+
+        SerialPlot(deviceState.stepsTaken, mean.x, mean.y, mean.z);
+    }
+    #endif // SERIAL_PLOTTING_ENABLED
+}
+
+// Protection in the unlikely case the device is left running for long enough for the system tick counter to overflow
+// This prevents the last process ticks from being 'in the future', which would prevent the update functions from being called,
+// rendering the device inoperable.
+// This would take ~49 days, but is not impossible if the user forgets to turn it off before they put it away (assuming th battery lasts that long)
+void left_running_protection(void* args) 
+{
+    while(1)
+    {
+        unsigned long currentTick = readCurrentTick(); // Timings for tasks should not rely on this function, rather xDelayTaskUntil()
+
         if (currentTick < lastIoProcess) {
             lastIoProcess = 0;
         }
@@ -283,6 +269,48 @@ int main(void)
         }
         #endif // SERIAL_PLOTTING_ENABLED
     }
+}
+
+/***********************************************************
+ * Main Function
+ ***********************************************************/
+
+int main(void)
+{
+    #ifdef SERIAL_PLOTTING_ENABLED
+    unsigned long lastSerialProcess = 0;
+    #endif // SERIAL_PLOTTING_ENABLED
+
+    // Device state
+    // Omnibus struct that holds loads of info about the device's current state, so it can be updated from any function
+    deviceState.displayMode = DISPLAY_STEPS;
+    deviceState.stepsTaken = 0;
+    deviceState.currentGoal = TARGET_DISTANCE_DEFAULT;
+    deviceState.debugMode = false;
+    deviceState.displayUnits= UNITS_SI;
+    deviceState.workoutStartTick = 0;
+    deviceState.flashTicksLeft = 0;
+    deviceState.flashMessage = calloc(MAX_STR_LEN + 1, sizeof(char));
+
+    // Init libs
+    initClock();
+    displayInit();
+    btnInit();
+    acclInit();
+    initADC();
+
+    #ifdef SERIAL_PLOTTING_ENABLED
+    SerialInit ();
+    #endif // SERIAL_PLOTTING_ENABLED
+
+    // Start the FreeRTOS scheduler ------> See https://www.freertos.org/xtaskdelayuntiltask-control.html for info on how to use xDelayTaskUntil()
+    xTaskCreate(&poll_butt_and_pot, "pollbuttandpot", 512, NULL, 1, NULL);
+    xTaskCreate(&read_process_accl, "readprocessaccl", 512, NULL, 1, NULL);
+    xTaskCreate(&write_to_display, "writetodisplay", 512, NULL, 1, NULL);
+    xTaskCreate(&send_USB_via_serial, "USBviaserial", 512, NULL, 1, NULL);
+    xTaskCreate(&left_running_protection, "ticksprotection", 512, NULL, 1, NULL);
+    vTaskStartScheduler();
+    return 0; // Should never reach here
 
 }
 
