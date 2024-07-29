@@ -188,26 +188,64 @@ void test_adc_writes_to_correct_buffer(void)
     // Act
     initADC();
     circBuf_t* ptr = get_circBuf_ptr_and_reset_fff();
+    ADCIntHandler();
+    circBuf_t* buffer_written_to = writeCircBuf_fake.arg0_val;
 
     //Assert
-    TEST_ASSERT_EQUAL(ptr, 0); // This needs to be changed.
+    TEST_ASSERT_EQUAL(ptr, buffer_written_to);
 }
 
 void test_adc_writes_correct_value_to_buffer(void)
 {
     // Act
     initADC();
+    ADCSequenceDataGet_fake.custom_fake = ADCSequenceDataGet_fake_adc_value;
+
+    ADCIntHandler();
+    uint32_t written_value = writeCircBuf_fake.arg1_val;
 
     //Assert
+    TEST_ASSERT_EQUAL(FAKE_ADC_VALUE, written_value);
 }
 
 void test_adc_clears_interrupt_signal(void)
 {
     // Act
     initADC();
+    ADCIntHandler();
 
     //Assert
+    TEST_ASSERT_EQUAL(1, ADCIntClear_fake.call_count);
 
+}
+
+void test_adc_reads_from_correct_buffer(void)
+{
+    // Act
+    initADC();
+    circBuf_t* ptr = get_circBuf_ptr_and_reset_fff();
+    //ADCIntHandler();
+    (void) readADC();
+    circBuf_t* buffer_read_from = readCircBuf_fake.arg0_val;
+
+    //Assert
+    TEST_ASSERT_EQUAL(ptr, buffer_read_from);
+}
+
+void same_number_averaging(void)
+{
+    // Act
+
+    //Assert
+    //TEST_ASSERT_EQUAL(ptr, buffer_read_from);
+}
+
+void number_sequence_averaging(void)
+{
+    // Act
+
+    //Assert
+    //TEST_ASSERT_EQUAL(ptr, buffer_read_from);
 }
 
 /* Test cases - readADC */
