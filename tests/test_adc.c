@@ -232,20 +232,22 @@ void test_adc_reads_from_correct_buffer(void)
     TEST_ASSERT_EQUAL(ptr, buffer_read_from);
 }
 
-void same_number_averaging(void)
+void test_adc_same_number_averaging(void)
 {
     // Act
-
+    int same_num_array[] = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+    SET_RETURN_SEQ(readCircBuf, same_num_array, 10);
     //Assert
-    //TEST_ASSERT_EQUAL(ptr, buffer_read_from);
+    TEST_ASSERT_EQUAL(readADC(), 3);
 }
 
-void number_sequence_averaging(void)
+void test_adc_number_sequence_averaging(void)
 {
     // Act
-
+    int same_num_array[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    SET_RETURN_SEQ(readCircBuf, same_num_array, 10);
     //Assert
-    //TEST_ASSERT_EQUAL(ptr, buffer_read_from);
+    TEST_ASSERT_EQUAL(readADC(), 5.5);
 }
 
 /* Test cases - readADC */
