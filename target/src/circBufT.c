@@ -57,18 +57,18 @@ writeCircBuf (circBuf_t *buffer, uint32_t entry)
 // readCircBuf: return entry at the current rindex location,
 // advance rindex, modulo (buffer size). The function checks for 
 // unwritten data to error if rindex has not overtaken windex.
-int32_t
+uint32_t
 readCircBuf (circBuf_t *buffer)
 {
-	int32_t entry;
-	if (buffer->data != NULL) {
+	uint32_t entry;
+	if (buffer->data != 0) {
 		entry = buffer->data[buffer->rindex];
 		buffer->rindex++;
 		if (buffer->rindex >= buffer->size)
 			buffer->rindex = 0;
 		return entry;
 	} else {
-		return NULL;
+		return 0;
 	}
 	
 }
@@ -85,6 +85,6 @@ freeCircBuf (struct circBuf_t * buffer)
 	buffer->size = 0;
 	free (buffer->data);
 	buffer->data = NULL;
-	free(buffer);
+	//free(buffer); memory leak go brrrrrr
 }
 

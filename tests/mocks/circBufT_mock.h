@@ -15,7 +15,7 @@
     FUNC(readCircBuf)                    \
     FUNC(freeCircBuf)      
 
-VALUE_FUNC(int32_t *, initCircBuf, circBuf_t *, uint32_t);
-VOID_FUNC(writeCircBuf, circBuf_t *, int32_t);
-VALUE_FUNC(int32_t, readCircBuf, circBuf_t *);
+VALUE_FUNC(circBuf_t *, initCircBuf, uint32_t);
+VOID_FUNC(writeCircBuf, circBuf_t *, uint32_t);
+VALUE_FUNC(uint32_t, readCircBuf, circBuf_t *);
 VOID_FUNC(freeCircBuf, circBuf_t *);
