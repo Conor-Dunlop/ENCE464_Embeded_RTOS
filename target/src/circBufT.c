@@ -14,19 +14,30 @@
 #include "circBufT.h"
 
 // *******************************************************
+// Buffer structure
+
+struct circBuf_t {
+	uint32_t size;		// Number of entries in buffer
+	uint32_t windex;	// index for writing, mod(size)
+	uint32_t rindex;	// index for reading, mod(size)
+	uint32_t *data;		// pointer to the data
+};
+
+// *******************************************************
 // initCircBuf: Initialise the circBuf instance. Reset both indices to
 // the start of the buffer.  Dynamically allocate and clear the the 
 // memory and return a pointer for the data.  Return NULL if 
 // allocation fails.
-int32_t *
-initCircBuf (circBuf_t *buffer, uint32_t size)
+circBuf_t *
+initCircBuf (uint32_t size)
 {
+	circBuf_t *buffer = (circBuf_t*)malloc(sizeof(circBuf_t));
 	buffer->windex = 0;
 	buffer->rindex = 0;
 	buffer->size = size;
 	buffer->data = 
-        (int32_t *) calloc (size, sizeof(int32_t));
-	return buffer->data;
+        (uint32_t *) calloc (size, sizeof(uint32_t));
+	return buffer;
 }
    // Note use of calloc() to clear contents.
 
@@ -34,7 +45,7 @@ initCircBuf (circBuf_t *buffer, uint32_t size)
 // writeCircBuf: insert entry at the current windex location,
 // advance windex, modulo (buffer size).
 void
-writeCircBuf (circBuf_t *buffer, int32_t entry)
+writeCircBuf (struct circBuf_t *buffer, uint32_t entry)
 {
 	buffer->data[buffer->windex] = entry;
 	buffer->windex++;
@@ -46,10 +57,10 @@ writeCircBuf (circBuf_t *buffer, int32_t entry)
 // readCircBuf: return entry at the current rindex location,
 // advance rindex, modulo (buffer size). The function deos not check
 // if reading has advanced ahead of writing.
-int32_t
-readCircBuf (circBuf_t *buffer)
+uint32_t
+readCircBuf (struct circBuf_t *buffer)
 {
-	int32_t entry;
+	uint32_t entry;
 	
 	entry = buffer->data[buffer->rindex];
 	buffer->rindex++;
@@ -63,12 +74,13 @@ readCircBuf (circBuf_t *buffer)
 // sets pointer to NULL and other fields to 0. The buffer can
 // re-initialised by another call to initCircBuf().
 void
-freeCircBuf (circBuf_t * buffer)
+freeCircBuf (struct circBuf_t * buffer)
 {
 	buffer->windex = 0;
 	buffer->rindex = 0;
 	buffer->size = 0;
 	free (buffer->data);
 	buffer->data = NULL;
+	free(buffer);
 }
 
