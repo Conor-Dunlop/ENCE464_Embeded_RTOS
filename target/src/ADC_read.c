@@ -25,7 +25,7 @@
 //*****************************************************************************
 // Global variables
 //*****************************************************************************
-static circBuf_t ADC_inBuffer;		// Buffer of size BUF_SIZE integers (sample values)
+static circBuf_t* ADC_inBuffer;		// Buffer of size BUF_SIZE integers (sample values)
 
 //*****************************************************************************
 //
@@ -56,7 +56,7 @@ void ADCIntHandler(void)
 	ADCSequenceDataGet(ADC0_BASE, 3, &ulValue);
 	//
 	// Place it in the circular buffer (advancing write index)
-	writeCircBuf (&ADC_inBuffer, ulValue);
+	writeCircBuf (ADC_inBuffer, ulValue);
 	//
 	// Clean up, clearing the interrupt
 	ADCIntClear(ADC0_BASE, 3);                          
@@ -69,7 +69,8 @@ void ADCIntHandler(void)
 void initADC (void)
 {
     //
-    initCircBuf (&ADC_inBuffer, ADC_BUF_SIZE);
+    ADC_inBuffer = initCircBuf (ADC_BUF_SIZE);
+
     // The ADC0 peripheral must be enabled for configuration and use.
     SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);
     
@@ -108,7 +109,7 @@ uint32_t readADC() {
       uint32_t sum = 0;
       uint16_t i = 0;
       for (i = 0; i < ADC_BUF_SIZE; i++)
-          sum = sum + readCircBuf (&ADC_inBuffer);
+          sum = sum + readCircBuf (ADC_inBuffer);
 
       return sum/ADC_BUF_SIZE;
 }

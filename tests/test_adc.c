@@ -24,7 +24,7 @@ void reset_fff(void)
 circBuf_t* get_circBuf_ptr_and_reset_fff(void)
 {
     initADC();
-    circBuf_t* buffer_ptr = initCircBuf_fake.arg0_val;
+    circBuf_t* buffer_ptr = initCircBuf_fake.return_val;
     reset_fff();
     return buffer_ptr;
 }
@@ -75,7 +75,7 @@ void test_adc_init_initialises_buffer(void)
 
     // Assert
     TEST_ASSERT_EQUAL(1, initCircBuf_fake.call_count);
-    TEST_ASSERT_EQUAL(ADC_BUF_SIZE, initCircBuf_fake.arg1_val);
+    TEST_ASSERT_EQUAL(ADC_BUF_SIZE, initCircBuf_fake.arg0_val);
 }
 
 void test_adc_init_enables_adc(void)
