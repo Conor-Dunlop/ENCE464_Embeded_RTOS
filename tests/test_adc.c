@@ -75,7 +75,7 @@ void test_adc_init_initialises_buffer(void)
 
     // Assert
     TEST_ASSERT_EQUAL(1, initCircBuf_fake.call_count);
-    TEST_ASSERT_EQUAL(ADC_BUF_SIZE, initCircBuf_fake.arg0_val);
+    TEST_ASSERT_EQUAL(SYSCTL_PERIPH_ADC0, initCircBuf_fake.arg0_val);
 }
 
 void test_adc_init_enables_adc(void)
