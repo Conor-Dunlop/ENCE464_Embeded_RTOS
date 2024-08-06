@@ -6,6 +6,7 @@
     ],
     "cmake.preferredGenerators": ["Unix Makefiles"],
     "files.associations": {
-        "*.h": "c"
+        "*.h": "c",
+        "random": "c"
     }
 }

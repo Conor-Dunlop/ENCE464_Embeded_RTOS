@@ -34,6 +34,7 @@
 #include "ADC_read.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
 #ifdef SERIAL_PLOTTING_ENABLED
 #include "serial_sender.h"
@@ -84,6 +85,7 @@ vector3_t getAcclData (void);
 // unsigned long ticksElapsed = 0; // Incremented once every system tick. Must be read with SysTickIntHandler(), or you can get garbled data!
 
 deviceStateInfo_t deviceState; // Stored as one global so it can be accessed by other helper libs within this main module
+SemaphoreHandle_t xMutex;
 
 /***********************************************************
  * Initialisation functions
@@ -95,40 +97,25 @@ void initClock (void)
                    SYSCTL_XTAL_16MHZ);
 }
 
-
-
-// void initSysTick (void)
-// {
-//     // Set up the period for the SysTick timer.  The SysTick timer period is
-//     // set as a function of the system clock.
-//     SysTickPeriodSet (SysCtlClockGet () / RATE_SYSTICK_HZ);
-//     //
-//     // Register the interrupt handler
-//     SysTickIntRegister (SysTickIntHandler);
-//     //
-//     // Enable interrupt and device
-//     SysTickIntEnable ();
-//     SysTickEnable ();
-// }
-
-
-
 /***********************************************************
  * Helper functions
  ***********************************************************/
 // Flash a message onto the screen, overriding everything else
 void flashMessage(char* toShow)
 {
-    deviceState.flashTicksLeft = RATE_DISPLAY_UPDATE_HZ * FLASH_MESSAGE_TIME;
+    if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
+        deviceState.flashTicksLeft = RATE_DISPLAY_UPDATE_HZ * FLASH_MESSAGE_TIME;
 
-    uint8_t i = 0;
-    while (toShow[i] != '\0' && i < MAX_STR_LEN) {
-        (deviceState.flashMessage)[i] = toShow[i];
+        uint8_t i = 0;
+        while (toShow[i] != '\0' && i < MAX_STR_LEN) {
+            (deviceState.flashMessage)[i] = toShow[i];
 
-        i++;
+            i++;
+        }
+
+        deviceState.flashMessage[i] = '\0';
+        xSemaphoreGive(xMutex);
     }
-
-    deviceState.flashMessage[i] = '\0';
 }
 
 void vAssertCalled( const char * pcFile, unsigned long ulLine ) {
@@ -138,9 +125,9 @@ void vAssertCalled( const char * pcFile, unsigned long ulLine ) {
 }
 
 
-// unsigned long lastIoProcess= 0;
-// unsigned long lastAcclProcess = 0;
-// unsigned long lastDisplayProcess = 0;
+unsigned long lastIoProcess= 0;
+unsigned long lastAcclProcess = 0;
+unsigned long lastDisplayProcess = 0;
 
 uint8_t stepHigh = false;
 vector3_t mean;
@@ -152,11 +139,13 @@ vector3_t mean;
 // Poll the buttons and potentiometer
 void poll_butt_and_pot(void* args) {
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = RATE_IO_HZ;
+    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
         xTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+        lastIoProcess = xLastWakeTime;
 
         // updateSwitch();
         btnUpdateState(&deviceState);
@@ -173,11 +162,13 @@ void poll_butt_and_pot(void* args) {
 // Read and process the accelerometer
 void read_process_accl(void* args) {
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = RATE_ACCL_HZ;
+    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_ACCL_HZ);
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
         xTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+        lastAcclProcess = xLastWakeTime;
 
         acclProcess();
 
@@ -208,18 +199,20 @@ void read_process_accl(void* args) {
 // Write to the display
 void write_to_display(void* args) {
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = RATE_DISPLAY_UPDATE_HZ;
+    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_DISPLAY_UPDATE_HZ);
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
 
         xTaskDelayUntil(&xLastWakeTime, xFrequency);
 
+        lastDisplayProcess = xLastWakeTime;
+
         if (deviceState.flashTicksLeft > 0) {
             deviceState.flashTicksLeft--;
         }
 
-        uint16_t secondsElapsed = (xLastWakeTime - deviceState.workoutStartTick)/RATE_SYSTICK_HZ; // Too fast, need to change
+        uint16_t secondsElapsed = (xLastWakeTime - deviceState.workoutStartTick)/RATE_SYSTICK_HZ/4;
         displayUpdate(deviceState, secondsElapsed);
     }
 }
@@ -230,12 +223,14 @@ void send_USB_via_serial(void* args) {
 
     #ifdef SERIAL_PLOTTING_ENABLED
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = RATE_SERIAL_PLOT_HZ;
+    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_SERIAL_PLOT_HZ);
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
 
         xTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+        lastSerialProcess = xLastWakeTime;
 
         SerialPlot(deviceState.stepsTaken, mean.x, mean.y, mean.z);
     }
@@ -246,32 +241,32 @@ void send_USB_via_serial(void* args) {
 // This prevents the last process ticks from being 'in the future', which would prevent the update functions from being called,
 // rendering the device inoperable.
 // This would take ~49 days, but is not impossible if the user forgets to turn it off before they put it away (assuming th battery lasts that long)
-// void left_running_protection(void* args) 
-// {
-//     TickType_t xLastWakeTime;
-//     while(1)
-//     {
-//         xLastWakeTime = xTaskGetTickCount ();
+void left_running_protection(void* args) 
+{
+    TickType_t xLastWakeTime;
+    while(1)
+    {
+        xLastWakeTime = xTaskGetTickCount ();
 
-//         if (xLastWakeTime < lastIoProcess) {
-//             lastIoProcess = 0;
-//         }
+        if (xLastWakeTime < lastIoProcess) {
+            lastIoProcess = 0;
+        }
 
-//         if (xLastWakeTime < lastAcclProcess) {
-//             lastAcclProcess = 0;
-//         }
+        if (xLastWakeTime < lastAcclProcess) {
+            lastAcclProcess = 0;
+        }
 
-//         if (xLastWakeTime < lastDisplayProcess) {
-//             lastDisplayProcess = 0;
-//         }
+        if (xLastWakeTime < lastDisplayProcess) {
+            lastDisplayProcess = 0;
+        }
 
-//         #ifdef SERIAL_PLOTTING_ENABLED
-//         if (xLastWakeTime < lastSerialProcess) {
-//             lastSerialProcess = 0;
-//         }
-//         #endif // SERIAL_PLOTTING_ENABLED
-//     }
-// }
+        #ifdef SERIAL_PLOTTING_ENABLED
+        if (xLastWakeTime < lastSerialProcess) {
+            lastSerialProcess = 0;
+        }
+        #endif // SERIAL_PLOTTING_ENABLED
+    }
+}
 
 /***********************************************************
  * Main Function
@@ -305,13 +300,26 @@ int main(void)
     SerialInit ();
     #endif // SERIAL_PLOTTING_ENABLED
 
-    // Start the FreeRTOS scheduler ------> See https://www.freertos.org/xtaskdelayuntiltask-control.html for info on how to use xDelayTaskUntil()
-    xTaskCreate(&write_to_display, "writetodisplay", 512, NULL, 1, NULL);
-    xTaskCreate(&poll_butt_and_pot, "pollbuttandpot", 512, NULL, 1, NULL);
-    xTaskCreate(&read_process_accl, "readprocessaccl", 512, NULL, 1, NULL);
-    xTaskCreate(&send_USB_via_serial, "USBviaserial", 512, NULL, 1, NULL);
-    // xTaskCreate(&left_running_protection, "ticksprotection", 512, NULL, 1, NULL);
+    // Create the mutex
+    xMutex = xSemaphoreCreateMutex();
+
+    // Create tasks
+    xTaskCreate(write_to_display, "WriteToDisplay", 512, NULL, 2, NULL);
+
+    xTaskCreate(poll_butt_and_pot, "PollButtAndPot", 512, NULL, 1, NULL);
+
+    xTaskCreate(read_process_accl, "ReadProcessAccl", 512, NULL, 1, NULL);
+
+    #ifdef SERIAL_PLOTTING_ENABLED
+    xTaskCreate(send_USB_via_serial, "USBViaSerial", 512, NULL, 1, NULL);
+    #endif // SERIAL_PLOTTING_ENABLED
+
+    xTaskCreate(left_running_protection, "TicksProtection", 512, NULL, 1, NULL);
+
+    // Start the scheduler
     vTaskStartScheduler();
-    return 0; // Should never reach here
+
+    // Should never reach here
+    return 0;
 
 }
