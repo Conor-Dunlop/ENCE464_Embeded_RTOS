@@ -18,6 +18,8 @@ enum ADC_ID{
     ADC_ID_1 = 1
 };
 
+
+
 void adc_hal_register (uint32_t adc_id, void(*callback)(uint32_t));
 
 void adc_hal_start_conversion (uint32_t id);
