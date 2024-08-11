@@ -35,6 +35,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "synch.h"
+#include "queue.h"
+#include "switches.h"
 
 #ifdef SERIAL_PLOTTING_ENABLED
 #include "serial_sender.h"
@@ -51,6 +54,7 @@
  **********************************************************/
 #define RATE_SYSTICK_HZ 250
 #define RATE_IO_HZ 75
+#define POT_HZ 50
 #define RATE_ACCL_HZ 200
 #define RATE_DISPLAY_UPDATE_HZ 5
 #define FLASH_MESSAGE_TIME 3/2 // seconds
@@ -85,7 +89,12 @@ vector3_t getAcclData (void);
 // unsigned long ticksElapsed = 0; // Incremented once every system tick. Must be read with SysTickIntHandler(), or you can get garbled data!
 
 deviceStateInfo_t deviceState; // Stored as one global so it can be accessed by other helper libs within this main module
-SemaphoreHandle_t xMutex;
+
+unsigned long lastIoProcess= 0;
+unsigned long lastAcclProcess = 0;
+unsigned long lastDisplayProcess = 0;
+
+vector3_t mean;
 
 /***********************************************************
  * Initialisation functions
@@ -103,7 +112,7 @@ void initClock (void)
 // Flash a message onto the screen, overriding everything else
 void flashMessage(char* toShow)
 {
-    if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
+    if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
         deviceState.flashTicksLeft = RATE_DISPLAY_UPDATE_HZ * FLASH_MESSAGE_TIME;
 
         uint8_t i = 0;
@@ -114,7 +123,8 @@ void flashMessage(char* toShow)
         }
 
         deviceState.flashMessage[i] = '\0';
-        xSemaphoreGive(xMutex);
+
+        xSemaphoreGive(xDeviceStateMutex);
     }
 }
 
@@ -124,45 +134,88 @@ void vAssertCalled( const char * pcFile, unsigned long ulLine ) {
     while (true);
 }
 
-
-unsigned long lastIoProcess= 0;
-unsigned long lastAcclProcess = 0;
-unsigned long lastDisplayProcess = 0;
-
-uint8_t stepHigh = false;
-vector3_t mean;
-
 /***********************************************************
  * FreeRTOS System Tasks
  ***********************************************************/
 
-// Poll the buttons and potentiometer
-void poll_butt_and_pot(void* args) {
-    TickType_t xLastWakeTime;
+// Poll the buttons
+static void poll_butt_and_switch(void *arg)
+{
+    TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
+
+    for (;;) {
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+        updateButtons();
+        updateSwitch();
+
+        for (enum butNames button = 0; button < NUM_BUTS; button++) {
+            if (checkButton(button) != NO_CHANGE)
+                xQueueSend(button_q, &button, 0);
+        }
+
+        for (enum SWNames switches = 0; switches< NUM_SW; switches++) {
+            if (checkSwitch(switches) != SW_NO_CHANGE)
+                xQueueSend(switch_q, &switches, 0);
+        }
+    }
+}
+
+static void update_state(void *arg)
+{
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
+
+    for (;;) {
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+        enum butNames button;
+        enum SWNames switches;
+
+        if (xQueueReceive(button_q, &button, 0) == pdTRUE) {
+            btnUpdateState(&deviceState, button);
+        } else if (xQueueReceive(switch_q, &switches, 0) == pdTRUE) {
+            swUpdateState(&deviceState, switches);
+        }
+    }
+}
+
+// Update newGoal based on potentiometer state
+static void update_newGoal(void* args) {
+    TickType_t xLastWakeTime;
+    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / POT_HZ);
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
         xTaskDelayUntil(&xLastWakeTime, xFrequency);
-
+        
         lastIoProcess = xLastWakeTime;
 
-        // updateSwitch();
-        btnUpdateState(&deviceState);
         pollADC();
 
-        deviceState.newGoal = readADC() * POT_SCALE_COEFF; // Set the new goal value, scaling to give the desired range
-        deviceState.newGoal = (deviceState.newGoal / STEP_GOAL_ROUNDING) * STEP_GOAL_ROUNDING; // Round to the nearest 100 steps
-        if (deviceState.newGoal == 0) { // Prevent a goal of zero, instead setting to the minimum goal (this also makes it easier to test the goal-reaching code on a small but non-zero target)
-            deviceState.newGoal = STEP_GOAL_ROUNDING;
+        if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+            // Check for the signal from the ADC ISR
+            // if (xSemaphoreTake(xADCSemaphore, 0) == pdTRUE) {
+                deviceState.newGoal = readADC() * POT_SCALE_COEFF; // Set the new goal value, scaling to give the desired range
+            // } 
+
+            deviceState.newGoal = (deviceState.newGoal / STEP_GOAL_ROUNDING) * STEP_GOAL_ROUNDING; // Round to the nearest 100 steps
+
+            if (deviceState.newGoal == 0) { // Prevent a goal of zero, instead setting to the minimum goal (this also makes it easier to test the goal-reaching code on a small but non-zero target)
+                deviceState.newGoal = STEP_GOAL_ROUNDING;
+            }
+
+            xSemaphoreGive(xDeviceStateMutex);
         }
     }
 }
 
 // Read and process the accelerometer
-void read_process_accl(void* args) {
+static void read_process_accl(void* args) {
     TickType_t xLastWakeTime;
     const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_ACCL_HZ);
+    static uint8_t stepHigh = false;
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
@@ -178,8 +231,12 @@ void read_process_accl(void* args) {
 
         if (combined >= STEP_THRESHOLD_HIGH && stepHigh == false) {
             stepHigh = true;
-            deviceState.stepsTaken++;
-
+            if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+                // Access and modify deviceState
+                deviceState.stepsTaken++;
+                // Release mutex
+                xSemaphoreGive(xDeviceStateMutex);
+            }
             // flash a message if the user has reached their goal
             if (deviceState.stepsTaken == deviceState.currentGoal && deviceState.flashTicksLeft == 0) {
                 flashMessage("Goal reached!");
@@ -191,13 +248,18 @@ void read_process_accl(void* args) {
 
         // Don't start the workout until the user begins walking
         if (deviceState.stepsTaken == 0) {
-            deviceState.workoutStartTick = xLastWakeTime;
+            if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+                // Access and modify deviceState
+                deviceState.workoutStartTick = xLastWakeTime;
+                // Release mutex
+                xSemaphoreGive(xDeviceStateMutex);
+            }
         }
     }
 }
 
 // Write to the display
-void write_to_display(void* args) {
+static void write_to_display(void* args) {
     TickType_t xLastWakeTime;
     const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_DISPLAY_UPDATE_HZ);
 
@@ -209,7 +271,12 @@ void write_to_display(void* args) {
         lastDisplayProcess = xLastWakeTime;
 
         if (deviceState.flashTicksLeft > 0) {
-            deviceState.flashTicksLeft--;
+            if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+                // Access and modify deviceState
+                deviceState.flashTicksLeft--;
+                // Release mutex
+                xSemaphoreGive(xDeviceStateMutex);
+            }
         }
 
         uint16_t secondsElapsed = (xLastWakeTime - deviceState.workoutStartTick)/RATE_SYSTICK_HZ/4;
@@ -218,7 +285,7 @@ void write_to_display(void* args) {
 }
 
 // Send to USB via serial
-void send_USB_via_serial(void* args) {
+static void send_USB_via_serial(void* args) {
     // unsigned long currentTick = readCurrentTick(); // Timings for tasks should not rely on this function, rather xDelayTaskUntil()
 
     #ifdef SERIAL_PLOTTING_ENABLED
@@ -241,7 +308,7 @@ void send_USB_via_serial(void* args) {
 // This prevents the last process ticks from being 'in the future', which would prevent the update functions from being called,
 // rendering the device inoperable.
 // This would take ~49 days, but is not impossible if the user forgets to turn it off before they put it away (assuming th battery lasts that long)
-void left_running_protection(void* args) 
+static void left_running_protection(void* args) 
 {
     TickType_t xLastWakeTime;
     while(1)
@@ -289,24 +356,29 @@ int main(void)
     deviceState.flashTicksLeft = 0;
     deviceState.flashMessage = calloc(MAX_STR_LEN + 1, sizeof(char));
 
+    // Create mutexes and semaphores
+    createSemaphores();
+
     // Init libs
     initClock();
     displayInit();
     btnInit();
     acclInit();
     initADC();
+    initButtons();
 
     #ifdef SERIAL_PLOTTING_ENABLED
     SerialInit ();
     #endif // SERIAL_PLOTTING_ENABLED
 
-    // Create the mutex
-    xMutex = xSemaphoreCreateMutex();
-
     // Create tasks
     xTaskCreate(write_to_display, "WriteToDisplay", 512, NULL, 2, NULL);
 
-    xTaskCreate(poll_butt_and_pot, "PollButtAndPot", 512, NULL, 1, NULL);
+    xTaskCreate(update_newGoal, "UpdateNewGoal", 512, NULL, 1, NULL);
+
+    xTaskCreate(update_state, "UpdateState", 512, NULL, 1, NULL);
+
+    xTaskCreate(poll_butt_and_switch, "PollButtAndSW", 512, NULL, 1, NULL);
 
     xTaskCreate(read_process_accl, "ReadProcessAccl", 512, NULL, 1, NULL);
 
@@ -321,5 +393,4 @@ int main(void)
 
     // Should never reach here
     return 0;
-
 }
