@@ -22,6 +22,7 @@
 #include "driverlib/debug.h"
 #include "utils/ustdlib.h"
 #include "circBufT.h"
+#include "synch.h"
 
 //*****************************************************************************
 // Constants
@@ -55,6 +56,7 @@ void pollADC(void)
 //*****************************************************************************
 void ADCIntHandler(void)
 {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 	uint32_t ulValue;
 	
 	// Get the single sample from ADC0.  ADC_BASE is defined in
@@ -65,7 +67,13 @@ void ADCIntHandler(void)
 	writeCircBuf (&ADC_inBuffer, ulValue);
 	//
 	// Clean up, clearing the interrupt
-	ADCIntClear(ADC0_BASE, 3);                          
+	ADCIntClear(ADC0_BASE, 3);
+
+    // Give the semaphore from the ISR
+    xSemaphoreGiveFromISR(xADCSemaphore, &xHigherPriorityTaskWoken);
+
+    // Perform a context switch if necessary
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);           
 }
 
 //*****************************************************************************
