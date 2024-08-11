@@ -21,6 +21,7 @@
 #include "display_manager.h"
 #include "button_manager.h"
 #include "switches.h"
+#include "synch.h"
 
 
 //********************************************************
@@ -45,86 +46,111 @@ void btnInit(void)
 //********************************************************
 // Run at a fixed rate, modifies the device's state depending on button presses
 //********************************************************
-void btnUpdateState(deviceStateInfo_t* deviceStateInfo)
+void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
 {
-    updateButtons();
-    updateSwitch();
-
     displayMode_t currentDisplayMode = deviceStateInfo ->displayMode;
 
     // Changing screens
-    if (checkButton(LEFT) == PUSHED) {
-        deviceStateInfo -> displayMode = (deviceStateInfo -> displayMode + 1) % DISPLAY_NUM_STATES;      //flicker when pressing button
-
-    } else if (checkButton(RIGHT) == PUSHED) {
-        // Can't use mod, as enums behave like an unsigned int, so (0-1)%n != n-1
-        if (deviceStateInfo -> displayMode > 0) {
-            deviceStateInfo -> displayMode--;
-        } else {
-            deviceStateInfo -> displayMode = DISPLAY_NUM_STATES-1;
-        }
-    }
-
-    // Enable/Disable test mode
-    if (isSwitchUp()) {
-        deviceStateInfo -> debugMode = true;
-    } else {
-        deviceStateInfo -> debugMode = false;
+    switch (button) {
+        case LEFT:
+            if (checkButton(button) == PUSHED) {
+                deviceStateInfo -> displayMode = (deviceStateInfo -> displayMode + 1) % DISPLAY_NUM_STATES;      //flicker when pressing button
+            }
+            break;
+        case RIGHT: 
+            if (checkButton(button) == PUSHED) {
+                // Can't use mod, as enums behave like an unsigned int, so (0-1)%n != n-1
+                if (deviceStateInfo -> displayMode > 0) {
+                    deviceStateInfo -> displayMode--;
+                } else {
+                    deviceStateInfo -> displayMode = DISPLAY_NUM_STATES-1;
+                }
+            }
+            break;
+        default:
+            break;
     }
 
 
     // Usage of UP and DOWN buttons
     if (deviceStateInfo -> debugMode) {
         // TEST MODE OPERATION
-        if (checkButton(UP) == PUSHED) {
-            deviceStateInfo -> stepsTaken = deviceStateInfo -> stepsTaken + DEBUG_STEP_INCREMENT;
+        switch (button) {
+            case UP:
+                if (checkButton(button) == PUSHED) {
+                    deviceStateInfo -> stepsTaken = deviceStateInfo -> stepsTaken + DEBUG_STEP_INCREMENT;
+                }
+                break;
+            case DOWN:
+                if (checkButton(button) == PUSHED) {
+                    if (deviceStateInfo -> stepsTaken >= DEBUG_STEP_DECREMENT) {
+                        deviceStateInfo -> stepsTaken = deviceStateInfo -> stepsTaken - DEBUG_STEP_DECREMENT;
+                    } else {
+                        deviceStateInfo -> stepsTaken = 0;
+                    }
+                }
+                break;
+            default:
+                break;
         }
-
-        if (checkButton(DOWN) == PUSHED) {
-            if (deviceStateInfo -> stepsTaken >= DEBUG_STEP_DECREMENT) {
-                deviceStateInfo -> stepsTaken = deviceStateInfo -> stepsTaken - DEBUG_STEP_DECREMENT;
-            } else {
-                deviceStateInfo -> stepsTaken = 0;
-            }
-        }
-
-
     } else {
         // NORMAL OPERATION
+        switch (button) {
+            case UP: // Changing units
+                if (checkButton(button) == PUSHED) {
+                    if (deviceStateInfo -> displayUnits == UNITS_SI) {
+                        deviceStateInfo -> displayUnits = UNITS_ALTERNATE;
+                    } else {
+                        deviceStateInfo -> displayUnits = UNITS_SI;
+                    }
+                }
+                break;
+            case DOWN: // Resetting steps and updating goal with long and short presses
+                if ((isDown(button) == true) && (currentDisplayMode != DISPLAY_SET_GOAL) && (allowLongPress)) {
+                    longPressCount++;
+                    if (longPressCount >= LONG_PRESS_CYCLES) {
+                        deviceStateInfo -> stepsTaken = 0;
+                        flashMessage("Reset!");
+                    }
+                } else {
+                    if ((currentDisplayMode == DISPLAY_SET_GOAL) && checkButton(button) == PUSHED) {
+                        deviceStateInfo -> currentGoal = deviceStateInfo -> newGoal;
+                        deviceStateInfo -> displayMode = DISPLAY_STEPS;
 
-        // Changing units
-        if (checkButton(UP) == PUSHED) {
-            if (deviceStateInfo -> displayUnits == UNITS_SI) {
-                deviceStateInfo -> displayUnits = UNITS_ALTERNATE;
-            } else {
-                deviceStateInfo -> displayUnits = UNITS_SI;
-            }
+                        allowLongPress = false; // Hacky solution: Protection against double-registering as a short press then a long press
+                    }
+                    longPressCount = 0;
+                }
+
+                if (checkButton(button) == RELEASED) {
+                    allowLongPress = true;
+                }
+                break;
+            default:
+                break;
         }
-
-        // Resetting steps and updating goal with long and short presses
-        if ((isDown(DOWN) == true) && (currentDisplayMode != DISPLAY_SET_GOAL) && (allowLongPress)) {
-            longPressCount++;
-            if (longPressCount >= LONG_PRESS_CYCLES) {
-                deviceStateInfo -> stepsTaken = 0;
-                flashMessage("Reset!");
-            }
-        } else {
-            if ((currentDisplayMode == DISPLAY_SET_GOAL) && checkButton(DOWN) == PUSHED) {
-                deviceStateInfo -> currentGoal = deviceStateInfo -> newGoal;
-                deviceStateInfo -> displayMode = DISPLAY_STEPS;
-
-                allowLongPress = false; // Hacky solution: Protection against double-registering as a short press then a long press
-            }
-            longPressCount = 0;
-        }
-
-        if (checkButton(DOWN) == RELEASED) {
-            allowLongPress = true;
-        }
-
-
     }
+}
 
+//********************************************************
+// Run at a fixed rate, modifies the device's state depending on switch states
+//********************************************************
+void swUpdateState(deviceStateInfo_t* deviceStateInfo, enum SWNames switches)
+{
+    if (xQueueReceive(switch_q, &switches, 0) == pdTRUE) {
+        switch (switches) {
+            case SW1: // Enable/Disable test mode
+                if (isSwitchUp(switches) == UP) {
+                    deviceStateInfo -> debugMode = true;
+                } else if (isSwitchUp(switches) == DOWN) {
+                    deviceStateInfo -> debugMode = false;
+                }
+            case SW2: // Additional functionality TBD
+                break;
+            default:
+                break;
+        }
+    }
 }
 
 
