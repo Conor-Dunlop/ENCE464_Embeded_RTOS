@@ -2,6 +2,9 @@
 #define ADC_READ_H_
 
 #include <stdint.h>
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "task.h"
 
 //*****************************************************************************
 //
