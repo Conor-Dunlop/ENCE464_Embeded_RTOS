@@ -57,15 +57,15 @@ void ADCIntHandler(void)
 void initADC (void)
 {
     //
-    adc_hal_register (ADC_BUF_ID, void(*callback)(uint32_t));
+    adc_hal_register (ADC_BUF_ID);
 }
 
-uint32_t readADC() {
-    
+uint32_t readADC() 
+{    
       uint32_t sum = 0;
       uint16_t i = 0;
       for (i = 0; i < ADC_BUF_SIZE; i++)
-          sum = sum + readCircBuf (ADC_inBuffer);
+          sum = sum + readAdcBuf ();
 
       return sum/ADC_BUF_SIZE;
 }

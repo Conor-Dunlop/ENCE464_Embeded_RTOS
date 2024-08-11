@@ -30,12 +30,12 @@ void setUp(void)
 
 void test_adc_hal_registers_an_adc(void)
 {
-    adc_hal_register(ADC_ID_1, dummy_callback);
+    adc_hal_register(ADC_ID_1);
 }
 
 void test_adc_hal_registers_correct_adc(void)
 {
-    adc_hal_register(ADC_ID_1, dummy_callback);
+    adc_hal_register(ADC_ID_1);
 
     TEST_ASSERT_EQUAL(1, SysCtlPeripheralEnable_fake.call_count);
     TEST_ASSERT_EQUAL(SYSCTL_PERIPH_ADC0, SysCtlPeripheralEnable_fake.arg0_val);
@@ -43,7 +43,7 @@ void test_adc_hal_registers_correct_adc(void)
 
 void test_adc_hal_configures_correct_adc_sequence(void)
 {
-    adc_hal_register(ADC_ID_1, dummy_callback);
+    adc_hal_register(ADC_ID_1);
 
     TEST_ASSERT_EQUAL(1, ADCSequenceConfigure_fake.call_count);
     TEST_ASSERT_EQUAL(ADC0_BASE, ADCSequenceConfigure_fake.arg0_val);
@@ -54,21 +54,16 @@ void test_adc_hal_configures_correct_adc_sequence(void)
 
 void test_adc_hal_does_not_register_invalid_id(void)
 {
-    adc_hal_register(ADC_INVALID_ID, dummy_callback);
+    adc_hal_register(ADC_INVALID_ID);
 
     TEST_ASSERT_EQUAL(0, SysCtlPeripheralEnable_fake.call_count);
 }
 
-void test_adc_hal_does_not_register_invalid_callback(void)
-{
-    adc_hal_register(ADC_ID_1, NULL);
 
-    TEST_ASSERT_EQUAL(0, SysCtlPeripheralEnable_fake.call_count);
-}
 
 void test_adc_hal_triggers_adc(void)
 {
-    adc_hal_register(ADC_ID_1, dummy_callback);
+    adc_hal_register(ADC_ID_1);
     adc_hal_start_conversion(ADC_ID_1);
 
     TEST_ASSERT_EQUAL(1, ADCProcessorTrigger_fake.call_count);
@@ -76,7 +71,7 @@ void test_adc_hal_triggers_adc(void)
 
 void test_adc_hal_does_not_trigger_invalid_id(void)
 {
-    adc_hal_register(ADC_ID_1, dummy_callback);
+    adc_hal_register(ADC_ID_1);
     adc_hal_start_conversion(ADC_INVALID_ID);
 
     TEST_ASSERT_EQUAL(0, ADCProcessorTrigger_fake.call_count);
@@ -84,7 +79,7 @@ void test_adc_hal_does_not_trigger_invalid_id(void)
 
 void test_adc_hal_isr_reads_correct_channel(void)
 {
-    adc_hal_register(ADC_ID_1, dummy_callback);
+    adc_hal_register(ADC_ID_1);
     adc_hal_isr();
 
     TEST_ASSERT_EQUAL(ADC0_BASE, ADCSequenceDataGet_fake.arg0_val);
@@ -93,21 +88,10 @@ void test_adc_hal_isr_reads_correct_channel(void)
 
 void test_adc_hal_isr_clears_interrupt(void)
 {
-    adc_hal_register(ADC_ID_1, dummy_callback);
+    adc_hal_register(ADC_ID_1);
     adc_hal_isr();
 
     TEST_ASSERT_EQUAL(1, ADCIntClear_fake.call_count);
-}
-
-void test_adc_hal_isr_calls_correct_callback(void)
-{
-    // TODO: Fix this test
-    // VOID_FUNC(dummy_callback, uint32_t);
-
-    adc_hal_register(ADC_ID_1, dummy_callback);
-    adc_hal_isr();
-
-    TEST_ASSERT_EQUAL(dummy_callback, ADCIntClear_fake.call_count);
 }
 
 void tearDown(void)

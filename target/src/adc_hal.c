@@ -7,6 +7,7 @@
 //*****************************************************************************
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "driverlib/sysctl.h"
 #include "inc/hw_memmap.h"
 #include "driverlib/adc.h"
@@ -17,7 +18,22 @@
 
 static circBuf_t* ADC_inBuffer;		// Buffer of size BUF_SIZE integers (sample values)
 
-void adc_hal_register(uint32_t adc_id, void(*callback)(uint32_t))
+void adc_hal_isr (void)
+{
+    uint32_t ulValue;
+	
+	// Get the single sample from ADC0.  ADC_BASE is defined in
+	// inc/hw_memmap.h
+	ADCSequenceDataGet(ADC0_BASE, 3, &ulValue);
+	//
+	// Place it in the circular buffer (advancing write index)
+	writeCircBuf (ADC_inBuffer, ulValue);
+	//
+	// Clean up, clearing the interrupt
+	ADCIntClear(ADC0_BASE, 3);      
+}
+
+void adc_hal_register(uint32_t adc_id)
 {
     ADC_inBuffer = initCircBuf (ADC_BUF_SIZE);
 
@@ -59,17 +75,7 @@ void adc_hal_start_conversion(uint32_t id)
     ADCProcessorTrigger(ADC0_BASE, id);
 }
 
-void adc_hal_isr (void(*callback)(uint32_t))
+uint32_t readAdcBuf (void)
 {
-    uint32_t ulValue;
-	
-	// Get the single sample from ADC0.  ADC_BASE is defined in
-	// inc/hw_memmap.h
-	ADCSequenceDataGet(ADC0_BASE, 3, &ulValue);
-	//
-	// Place it in the circular buffer (advancing write index)
-	writeCircBuf (ADC_inBuffer, ulValue);
-	//
-	// Clean up, clearing the interrupt
-	ADCIntClear(ADC0_BASE, 3);      
+    readCircBuf (ADC_inBuffer);
 }
