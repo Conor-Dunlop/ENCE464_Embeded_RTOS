@@ -36,6 +36,12 @@ circBufVec_t* initVecCircBuf (uint32_t size)
 	buffer->rindex = 0;
 	buffer->size = size;
 	buffer->data = (vector3_t*) calloc (size, sizeof(vector3_t));
+
+	if 	(buffer->data == NULL) {
+		free(buffer);
+		buffer = NULL;
+	}
+
 	return buffer;
 }
    // Note use of calloc() to clear contents.
