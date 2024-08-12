@@ -4,6 +4,7 @@
 // #define ADC_ID_1 1
 
 #include <stdint.h>
+#include "circBufT.h"
 //Need to change name
 
 //*****************************************************************************

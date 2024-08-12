@@ -9,6 +9,7 @@ DEFINE_FFF_GLOBALS
 
 #include "tiva_mocks/adc_mock.h"
 #include "tiva_mocks/sysctl_mock.h"
+#include "circBufT.h"
 
 /* Helper functions */
 void reset_fff(void)
@@ -47,7 +48,7 @@ void test_adc_hal_configures_correct_adc_sequence(void)
 
     TEST_ASSERT_EQUAL(1, ADCSequenceConfigure_fake.call_count);
     TEST_ASSERT_EQUAL(ADC0_BASE, ADCSequenceConfigure_fake.arg0_val);
-    TEST_ASSERT_EQUAL(3, ADCSequenceConfigure_fake.arg1_val);
+    TEST_ASSERT_EQUAL(1, ADCSequenceConfigure_fake.arg1_val);
     TEST_ASSERT_EQUAL(ADC_TRIGGER_PROCESSOR, ADCSequenceConfigure_fake.arg2_val);
     TEST_ASSERT_EQUAL(0, ADCSequenceConfigure_fake.arg3_val);
 }
