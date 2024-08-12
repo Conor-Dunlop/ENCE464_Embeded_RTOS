@@ -25,7 +25,7 @@
 // Constants and static vars
 //********************************************************
 #define BUF_SIZE 20 // WARNING: If this is set too high, we run out of heap space and the z-buffer gets garbled data
-static circBufVec_t acclBuffer;
+static circBufVec_t* acclBuffer;
 
 
 
@@ -45,7 +45,7 @@ void acclInit(void)
 {
     initAcclChip(); // Init the chip over I2C
 
-    initVecCircBuf(&acclBuffer, BUF_SIZE);
+    acclBuffer = initVecCircBuf(BUF_SIZE);
 }
 
 
