@@ -137,19 +137,17 @@ void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
 //********************************************************
 void swUpdateState(deviceStateInfo_t* deviceStateInfo, enum SWNames switches)
 {
-    if (xQueueReceive(switch_q, &switches, 0) == pdTRUE) {
-        switch (switches) {
-            case SW1: // Enable/Disable test mode
-                if (isSwitchUp(switches) == UP) {
-                    deviceStateInfo -> debugMode = true;
-                } else if (isSwitchUp(switches) == DOWN) {
-                    deviceStateInfo -> debugMode = false;
-                }
-            case SW2: // Additional functionality TBD
-                break;
-            default:
-                break;
-        }
+    switch (switches) {
+        case SW1: // Enable/Disable test mode
+            if (isSwitchUp(switches) == UP) {
+                deviceStateInfo -> debugMode = true;
+            } else if (isSwitchUp(switches) == DOWN) {
+                deviceStateInfo -> debugMode = false;
+            }
+        case SW2: // Additional functionality TBD
+            break;
+        default:
+            break;
     }
 }
 
