@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <math.h>
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
 #include "inc/hw_ints.h"
@@ -26,6 +27,9 @@
 #include "acc.h"
 #include "i2c_driver.h"
 #include "circBufV.h"
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "synch.h"
 
 
 #include "accl_manager.h"
@@ -35,7 +39,6 @@
 //********************************************************
 // Constants and static vars
 //********************************************************
-#define BUF_SIZE 20 // WARNING: If this is set too high, we run out of heap space and the z-buffer gets garbled data
 static circBufVec_t acclBuffer;
 
 
@@ -63,15 +66,18 @@ void acclInit(void)
 
 // Run periodically to store acceleration to the circular buffer
 void acclProcess(void)
-{
+{   
     vector3_t acceleration = getAcclData();
     writeVecCircBuf(&acclBuffer, acceleration);
+    uint16_t combined = acclMean();
+    xQueueSend(accl_q, &combined, portMAX_DELAY);
+    // return combined;
 }
 
 
 
 // Return the mean acceleration stored within the circular buffers
-vector3_t acclMean(void)
+uint16_t acclMean(void)
 {
     // Sum with 32-bit ints to prevent overflow, then dividing the total sum for better accuracy
     int32_t result_x = 0;
@@ -91,7 +97,8 @@ vector3_t acclMean(void)
     result.y = result_y / BUF_SIZE;
     result.z = result_z / BUF_SIZE;
 
-    return result;
+    uint16_t combined = sqrt(result.x*result.x + result.y*result.y + result.z*result.z);
+    return combined;
 }
 
 
