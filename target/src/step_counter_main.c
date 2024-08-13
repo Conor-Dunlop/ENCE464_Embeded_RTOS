@@ -38,6 +38,7 @@
 #include "synch.h"
 #include "queue.h"
 #include "switches.h"
+#include "buttons4.h"
 
 #ifdef SERIAL_PLOTTING_ENABLED
 #include "serial_sender.h"
@@ -128,12 +129,6 @@ void flashMessage(char* toShow)
     }
 }
 
-void vAssertCalled( const char * pcFile, unsigned long ulLine ) {
-    (void)pcFile; // unused
-    (void)ulLine; // unused
-    while (true);
-}
-
 /***********************************************************
  * FreeRTOS System Tasks
  ***********************************************************/
@@ -151,31 +146,10 @@ static void poll_butt_and_switch(void *arg)
         updateSwitch();
 
         for (enum butNames button = 0; button < NUM_BUTS; button++) {
-            if (checkButton(button) != NO_CHANGE)
-                xQueueSend(button_q, &button, 0);
+            btnUpdateState(&deviceState, button);
         }
 
         for (enum SWNames switches = 0; switches< NUM_SW; switches++) {
-            if (checkSwitch(switches) != SW_NO_CHANGE)
-                xQueueSend(switch_q, &switches, 0);
-        }
-    }
-}
-
-static void update_state(void *arg)
-{
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
-
-    for (;;) {
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
-
-        enum butNames button;
-        enum SWNames switches;
-
-        if (xQueueReceive(button_q, &button, 0) == pdTRUE) {
-            btnUpdateState(&deviceState, button);
-        } else if (xQueueReceive(switch_q, &switches, 0) == pdTRUE) {
             swUpdateState(&deviceState, switches);
         }
     }
@@ -196,9 +170,9 @@ static void update_newGoal(void* args) {
 
         if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
             // Check for the signal from the ADC ISR
-            // if (xSemaphoreTake(xADCSemaphore, 0) == pdTRUE) {
+            if (xSemaphoreTake(xADCSemaphore, 0) == pdTRUE) {
                 deviceState.newGoal = readADC() * POT_SCALE_COEFF; // Set the new goal value, scaling to give the desired range
-            // } 
+            } 
 
             deviceState.newGoal = (deviceState.newGoal / STEP_GOAL_ROUNDING) * STEP_GOAL_ROUNDING; // Round to the nearest 100 steps
 
@@ -216,6 +190,7 @@ static void read_process_accl(void* args) {
     TickType_t xLastWakeTime;
     const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_ACCL_HZ);
     static uint8_t stepHigh = false;
+    uint16_t combined;
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
@@ -225,29 +200,33 @@ static void read_process_accl(void* args) {
 
         acclProcess();
 
-        mean = acclMean();
+        if (xQueueReceive(accl_q, &combined, 0) == pdPASS) {
+            if (combined >= STEP_THRESHOLD_HIGH && stepHigh == false) {
+                stepHigh = true;
+                if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+                    // Access and modify deviceState
+                    deviceState.stepsTaken++;
+                    // Release mutex
+                    xSemaphoreGive(xDeviceStateMutex);
+                }
+                // flash a message if the user has reached their goal
+                if (deviceState.stepsTaken == deviceState.currentGoal && deviceState.flashTicksLeft == 0) {
+                    flashMessage("Goal reached!");
+                }
 
-        uint16_t combined = sqrt(mean.x*mean.x + mean.y*mean.y + mean.z*mean.z);
-
-        if (combined >= STEP_THRESHOLD_HIGH && stepHigh == false) {
-            stepHigh = true;
+            } else if (combined <= STEP_THRESHOLD_LOW) {
+                stepHigh = false;
+            }
+        }
+        // Don't start the workout until the user begins walking
+        if (deviceState.stepsTaken != 0) {
             if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
                 // Access and modify deviceState
-                deviceState.stepsTaken++;
+                deviceState.workoutBegun = true;
                 // Release mutex
                 xSemaphoreGive(xDeviceStateMutex);
             }
-            // flash a message if the user has reached their goal
-            if (deviceState.stepsTaken == deviceState.currentGoal && deviceState.flashTicksLeft == 0) {
-                flashMessage("Goal reached!");
-            }
-
-        } else if (combined <= STEP_THRESHOLD_LOW) {
-            stepHigh = false;
-        }
-
-        // Don't start the workout until the user begins walking
-        if (deviceState.stepsTaken == 0) {
+        } else {
             if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
                 // Access and modify deviceState
                 deviceState.workoutStartTick = xLastWakeTime;
@@ -262,6 +241,7 @@ static void read_process_accl(void* args) {
 static void write_to_display(void* args) {
     TickType_t xLastWakeTime;
     const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_DISPLAY_UPDATE_HZ);
+    uint16_t secondsElapsed;
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
@@ -279,14 +259,17 @@ static void write_to_display(void* args) {
             }
         }
 
-        uint16_t secondsElapsed = (xLastWakeTime - deviceState.workoutStartTick)/RATE_SYSTICK_HZ/4;
-        displayUpdate(deviceState, secondsElapsed);
+        if (deviceState.workoutBegun) {
+            secondsElapsed = (xLastWakeTime - deviceState.workoutStartTick)/RATE_SYSTICK_HZ/4;
+        } else {
+            secondsElapsed = 0;
+        }
+        displayUpdate(deviceState, secondsElapsed, false);
     }
 }
 
 // Send to USB via serial
 static void send_USB_via_serial(void* args) {
-    // unsigned long currentTick = readCurrentTick(); // Timings for tasks should not rely on this function, rather xDelayTaskUntil()
 
     #ifdef SERIAL_PLOTTING_ENABLED
     TickType_t xLastWakeTime;
@@ -351,6 +334,7 @@ int main(void)
     deviceState.stepsTaken = 0;
     deviceState.currentGoal = TARGET_DISTANCE_DEFAULT;
     deviceState.debugMode = false;
+    deviceState.workoutBegun = false;
     deviceState.displayUnits= UNITS_SI;
     deviceState.workoutStartTick = 0;
     deviceState.flashTicksLeft = 0;
@@ -376,8 +360,6 @@ int main(void)
 
     xTaskCreate(update_newGoal, "UpdateNewGoal", 512, NULL, 1, NULL);
 
-    xTaskCreate(update_state, "UpdateState", 512, NULL, 1, NULL);
-
     xTaskCreate(poll_butt_and_switch, "PollButtAndSW", 512, NULL, 1, NULL);
 
     xTaskCreate(read_process_accl, "ReadProcessAccl", 512, NULL, 1, NULL);
@@ -393,4 +375,12 @@ int main(void)
 
     // Should never reach here
     return 0;
+}
+
+void vAssertCalled( const char * pcFile, unsigned long ulLine ) {
+    (void)pcFile; // unused
+    (void)ulLine; // unused
+    vTaskSuspendAll();
+    displayUpdate(deviceState, 0, true);
+    while (true);
 }

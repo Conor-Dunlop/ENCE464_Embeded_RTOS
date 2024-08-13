@@ -43,10 +43,13 @@ typedef struct {
     // For displaying temporary messages over the top of everything else
     char *flashMessage;
     unsigned long flashTicksLeft;
+
+    bool workoutBegun; // Additional trigger to begin workout
 } deviceStateInfo_t;
 
 
 
 void flashMessage(char* toShow);
+void vAssertCalled( const char * pcFile, unsigned long ulLine );
 
 #endif /* STEP_COUNTER_MAIN_H_ */
