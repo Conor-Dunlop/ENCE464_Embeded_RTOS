@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
+#include "inc/hw_ints.h"
 #include "driverlib/adc.h"
 #include "driverlib/pwm.h"
 #include "driverlib/gpio.h"
@@ -23,6 +24,8 @@
 #include "utils/ustdlib.h"
 #include "circBufT.h"
 #include "synch.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 //*****************************************************************************
 // Constants
@@ -45,7 +48,6 @@ void pollADC(void)
     // Initiate a conversion
     //
     ADCProcessorTrigger(ADC0_BASE, 3);
-//    g_ulSampCnt++;
 }
 
 //*****************************************************************************
@@ -69,11 +71,11 @@ void ADCIntHandler(void)
 	// Clean up, clearing the interrupt
 	ADCIntClear(ADC0_BASE, 3);
 
-    // Give the semaphore from the ISR
+    // Give semaphore from the ISR
     xSemaphoreGiveFromISR(xADCSemaphore, &xHigherPriorityTaskWoken);
 
-    // Perform a context switch if necessary
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);           
+    // Perform context switch if required
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 //*****************************************************************************
@@ -91,7 +93,7 @@ void initADC (void)
     // Enable sample sequence 3 with a processor signal trigger.  Sequence 3
     // will do a single sample when the processor sends a signal to start the
     // conversion.
-    ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_PROCESSOR, 0);
+    ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_PROCESSOR, 1);
   
     //
     // Configure step 0 on sequence 3.  Sample channel 0 (ADC_CTL_CH0) in
@@ -103,20 +105,23 @@ void initADC (void)
     // conversion using sequence 3 we will only configure step 0.  For more
     // on the ADC sequences and steps, refer to the LM3S1968 datasheet.
     ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH0 | ADC_CTL_IE |
-                             ADC_CTL_END);    
+                             ADC_CTL_END);
                              
     //
     // Since sample sequence 3 is now configured, it must be enabled.
     ADCSequenceEnable(ADC0_BASE, 3);
-  
+
     //
     // Register the interrupt handler
     ADCIntRegister (ADC0_BASE, 3, ADCIntHandler);
-  
+    
+    //
+    // Set priority of ADC interrupt handler to be compatible with FreeRTOS API
+    IntPrioritySet(INT_ADC0SS3, pdTM4C_RTOS_INTERRUPT_PRIORITY(1));
+    
     //
     // Enable interrupts for ADC0 sequence 3 (clears any outstanding interrupts)
     ADCIntEnable(ADC0_BASE, 3);
-
 }
 
 uint32_t readADC() {
