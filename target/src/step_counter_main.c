@@ -91,11 +91,23 @@ vector3_t getAcclData (void);
 
 deviceStateInfo_t deviceState; // Stored as one global so it can be accessed by other helper libs within this main module
 
+// Converted frequencies for vTaskDelayUntil
+const TickType_t xAcclFrequency = pdMS_TO_TICKS(1000 / RATE_ACCL_HZ);
+const TickType_t xIOFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
+const TickType_t xPotFrequency = pdMS_TO_TICKS(1000 / POT_HZ);
+const TickType_t xDispFrequency = pdMS_TO_TICKS(1000 / RATE_DISPLAY_UPDATE_HZ);
+
+#ifdef SERIAL_PLOTTING_ENABLED
+const TickType_t xSerialFrequency = pdMS_TO_TICKS(1000 / RATE_SERIAL_PLOT_HZ);
+#endif // SERIAL_PLOTTING_ENABLED
+
+// Global process tracking variables. Updated by tasks, used for protection
 unsigned long lastIoProcess= 0;
+unsigned long lastPotProcess = 0;
 unsigned long lastAcclProcess = 0;
 unsigned long lastDisplayProcess = 0;
 
-vector3_t mean;
+
 
 /***********************************************************
  * Initialisation functions
@@ -136,11 +148,12 @@ void flashMessage(char* toShow)
 // Poll the buttons
 static void poll_butt_and_switch(void *arg)
 {
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
+    static TickType_t xLastWakeTime;
+    lastIoProcess = xLastWakeTime;
 
+    xLastWakeTime = xTaskGetTickCount();
     for (;;) {
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        vTaskDelayUntil(&xLastWakeTime, xIOFrequency);
 
         updateButtons();
         updateSwitch();
@@ -157,12 +170,12 @@ static void poll_butt_and_switch(void *arg)
 
 // Update newGoal based on potentiometer state
 static void update_newGoal(void* args) {
-    TickType_t xLastWakeTime;
-    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / POT_HZ);
+    static TickType_t xLastWakeTime;
+    lastPotProcess = xLastWakeTime;
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
-        xTaskDelayUntil(&xLastWakeTime, xFrequency);
+        xTaskDelayUntil(&xLastWakeTime, xPotFrequency);
         
         lastIoProcess = xLastWakeTime;
 
@@ -187,14 +200,13 @@ static void update_newGoal(void* args) {
 
 // Read and process the accelerometer
 static void read_process_accl(void* args) {
-    TickType_t xLastWakeTime;
-    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_ACCL_HZ);
+    static TickType_t xLastWakeTime;
     static uint8_t stepHigh = false;
     uint16_t combined;
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
-        xTaskDelayUntil(&xLastWakeTime, xFrequency);
+        xTaskDelayUntil(&xLastWakeTime, xAcclFrequency);
 
         lastAcclProcess = xLastWakeTime;
 
@@ -217,21 +229,21 @@ static void read_process_accl(void* args) {
             } else if (combined <= STEP_THRESHOLD_LOW) {
                 stepHigh = false;
             }
-        }
-        // Don't start the workout until the user begins walking
-        if (deviceState.stepsTaken != 0) {
-            if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
-                // Access and modify deviceState
-                deviceState.workoutBegun = true;
-                // Release mutex
-                xSemaphoreGive(xDeviceStateMutex);
-            }
-        } else {
-            if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
-                // Access and modify deviceState
-                deviceState.workoutStartTick = xLastWakeTime;
-                // Release mutex
-                xSemaphoreGive(xDeviceStateMutex);
+            // Don't start the workout until the user begins walking
+            if (deviceState.stepsTaken != 0) {
+                if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+                    // Access and modify deviceState
+                    deviceState.workoutBegun = true;
+                    // Release mutex
+                    xSemaphoreGive(xDeviceStateMutex);
+                }
+            } else {
+                if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+                    // Access and modify deviceState
+                    deviceState.workoutStartTick = xLastWakeTime;
+                    // Release mutex
+                    xSemaphoreGive(xDeviceStateMutex);
+                }
             }
         }
     }
@@ -239,14 +251,13 @@ static void read_process_accl(void* args) {
 
 // Write to the display
 static void write_to_display(void* args) {
-    TickType_t xLastWakeTime;
-    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_DISPLAY_UPDATE_HZ);
+    static TickType_t xLastWakeTime;
     uint16_t secondsElapsed;
 
     xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
 
-        xTaskDelayUntil(&xLastWakeTime, xFrequency);
+        xTaskDelayUntil(&xLastWakeTime, xDispFrequency);
 
         lastDisplayProcess = xLastWakeTime;
 
@@ -269,37 +280,40 @@ static void write_to_display(void* args) {
 }
 
 // Send to USB via serial
+#ifdef SERIAL_PLOTTING_ENABLED
 static void send_USB_via_serial(void* args) {
 
-    #ifdef SERIAL_PLOTTING_ENABLED
-    TickType_t xLastWakeTime;
-    const TickType_t xFrequency = pdMS_TO_TICKS(1000 / RATE_SERIAL_PLOT_HZ);
+    TickType_t xLastWakeTime = xTaskGetTickCount ();
+    vector3_t mean;
 
-    xLastWakeTime = xTaskGetTickCount ();
     for (;;) {
 
-        xTaskDelayUntil(&xLastWakeTime, xFrequency);
+        xTaskDelayUntil(&xLastWakeTime, xSerialFrequency);
 
         lastSerialProcess = xLastWakeTime;
 
         SerialPlot(deviceState.stepsTaken, mean.x, mean.y, mean.z);
     }
-    #endif // SERIAL_PLOTTING_ENABLED
 }
+#endif // SERIAL_PLOTTING_ENABLED
 
 // Protection in the unlikely case the device is left running for long enough for the system tick counter to overflow
 // This prevents the last process ticks from being 'in the future', which would prevent the update functions from being called,
 // rendering the device inoperable.
-// This would take ~49 days, but is not impossible if the user forgets to turn it off before they put it away (assuming th battery lasts that long)
+// This would take ~49 days, but is not impossible if the user forgets to turn it off before they put it away (assuming the battery lasts that long)
 static void left_running_protection(void* args) 
 {
-    TickType_t xLastWakeTime;
+    static TickType_t xLastWakeTime;
     while(1)
     {
         xLastWakeTime = xTaskGetTickCount ();
 
         if (xLastWakeTime < lastIoProcess) {
             lastIoProcess = 0;
+        }
+
+        if (xLastWakeTime < lastIoProcess) {
+            lastPotProcess = 0;
         }
 
         if (xLastWakeTime < lastAcclProcess) {
