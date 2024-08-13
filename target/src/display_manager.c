@@ -77,6 +77,7 @@ void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool 
     uint32_t mTravelled = 0; // TODO: If I put this inside the case statement it won't compile. Work out why!
 
     if (err) {
+        displayInit();
         displayLine("ASSERT ERROR!", 0, ALIGN_CENTRE);
     } else {
         switch (deviceState.displayMode) {
