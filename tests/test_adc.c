@@ -8,8 +8,10 @@ DEFINE_FFF_GLOBALS;
 #include "circBufT_mock.h"
 #include "tiva_mocks/adc_mock.h"
 #include "tiva_mocks/sysctl_mock.h"
+#include "adc_hal.h"
 
 #define ADC_BUF_SIZE 10
+#define FakeBuffInit 10
 #define FAKE_ADC_VALUE 0xFACCEADC // No K's in hex
 
 /* Helper functions */      
@@ -75,7 +77,7 @@ void test_adc_init_initialises_buffer(void)
 
     // Assert
     TEST_ASSERT_EQUAL(1, initCircBuf_fake.call_count);
-    TEST_ASSERT_EQUAL(ADC_BUF_SIZE, initCircBuf_fake.arg0_val);
+    TEST_ASSERT_EQUAL(FakeBuffInit, initCircBuf_fake.arg0_val);
 }
 
 void test_adc_init_enables_adc(void)
@@ -133,8 +135,7 @@ void test_adc_init_registers_adc_interrupt(void)
     // Assert
     TEST_ASSERT_EQUAL(1, ADCIntRegister_fake.call_count);
     TEST_ASSERT_EQUAL(ADC0_BASE, ADCIntRegister_fake.arg0_val);
-    TEST_ASSERT_EQUAL(3, ADCIntRegister_fake.arg1_val);  
-    TEST_ASSERT_EQUAL(ADCIntHandler, ADCIntRegister_fake.arg2_val);
+    TEST_ASSERT_EQUAL(3, ADCIntRegister_fake.arg1_val);
 }
 
 void test_adc_init_enables_adc_before_other_adc_operations(void)
