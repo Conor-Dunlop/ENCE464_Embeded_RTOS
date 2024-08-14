@@ -22,21 +22,14 @@ typedef struct{
     int16_t z;
 } vector3_t;
 
-// *******************************************************
-// Buffer structure
-typedef struct {
-	uint32_t size;		// Number of entries in buffer
-	uint32_t windex;	// index for writing, mod(size)
-	uint32_t rindex;	// index for reading, mod(size)
-	vector3_t *data;	// pointer to the data
-} circBufVec_t;
+typedef struct circBufVec_t circBufVec_t;
 
 // *******************************************************
 // initCircBuf: Initialise the circBuf instance. Reset both indices to
 // the start of the buffer.  Dynamically allocate and clear the the 
 // memory and return a pointer for the data.  Return NULL if 
 // allocation fails.
-vector3_t* initVecCircBuf (circBufVec_t *buffer, uint32_t size);
+circBufVec_t* initVecCircBuf (uint32_t size);
 
 // *******************************************************
 // writeCircBuf: insert entry at the current windex location,

@@ -11,26 +11,16 @@
 #include <stdlib.h>
 #include <math.h>
 #include "inc/hw_memmap.h"
-#include "inc/hw_types.h"
-#include "inc/hw_ints.h"
 #include "driverlib/gpio.h"
 #include "driverlib/i2c.h"
 #include "driverlib/sysctl.h"
-#include "driverlib/systick.h"
-#include "driverlib/debug.h"
 #include "driverlib/pin_map.h"
-#include "utils/ustdlib.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "utils/ustdlib.h"
-#include "buttons4.h"
 #include "acc.h"
 #include "i2c_driver.h"
 #include "circBufV.h"
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "synch.h"
-
 
 #include "accl_manager.h"
 
@@ -39,7 +29,7 @@
 //********************************************************
 // Constants and static vars
 //********************************************************
-static circBufVec_t acclBuffer;
+static circBufVec_t* acclBuffer;
 
 
 
@@ -59,7 +49,7 @@ void acclInit(void)
 {
     initAcclChip(); // Init the chip over I2C
 
-    initVecCircBuf(&acclBuffer, BUF_SIZE);
+    acclBuffer = initVecCircBuf(BUF_SIZE);
 }
 
 
@@ -68,10 +58,9 @@ void acclInit(void)
 void acclProcess(void)
 {   
     vector3_t acceleration = getAcclData();
-    writeVecCircBuf(&acclBuffer, acceleration);
+    writeVecCircBuf(acclBuffer, acceleration);
     uint16_t combined = acclMean();
     xQueueSend(accl_q, &combined, portMAX_DELAY);
-    // return combined;
 }
 
 
@@ -86,7 +75,7 @@ uint16_t acclMean(void)
 
     uint8_t i = 0;
     for (i = 0; i < BUF_SIZE; i++) {
-        vector3_t nextVector = readVecCircBuf(&acclBuffer);
+        vector3_t nextVector = readVecCircBuf(acclBuffer);
         result_x = result_x + nextVector.x;
         result_y = result_y + nextVector.y;
         result_z = result_z + nextVector.z;
