@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "adc_hal.h"
+#include "circBufT.h"
 
 
 //*****************************************************************************
@@ -23,6 +24,11 @@
 // Global variables
 //*****************************************************************************
 
+static circBuf_t* ADC_inBuffer;		// Buffer of size BUF_SIZE integers (sample values)
+
+void callback(uint32_t value) {
+    writeCircBuf(ADC_inBuffer, value);
+}
 
 //*****************************************************************************
 //
@@ -57,7 +63,8 @@ void ADCIntHandler(void)
 void initADC (void)
 {
     //
-    adc_hal_register (ADC_BUF_ID);
+    ADC_inBuffer = initCircBuf (ADC_BUF_SIZE);
+    adc_hal_register (ADC_BUF_ID, callback);
 }
 
 uint32_t readADC() 
@@ -65,7 +72,7 @@ uint32_t readADC()
       uint32_t sum = 0;
       uint16_t i = 0;
       for (i = 0; i < ADC_BUF_SIZE; i++)
-          sum = sum + readAdcBuf ();
+          sum = sum + readCircBuf(ADC_inBuffer);
 
       return sum/ADC_BUF_SIZE;
 }

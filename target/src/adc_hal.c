@@ -11,12 +11,10 @@
 #include "driverlib/sysctl.h"
 #include "inc/hw_memmap.h"
 #include "driverlib/adc.h"
-#include "circBufT.h"
 
 #define ADC_BUF_SIZE 10
 
-
-static circBuf_t* ADC_inBuffer;		// Buffer of size BUF_SIZE integers (sample values)
+void(*callback_func)(uint32_t);
 
 void adc_hal_isr (void)
 {
@@ -26,19 +24,17 @@ void adc_hal_isr (void)
 	// inc/hw_memmap.h
 	ADCSequenceDataGet(ADC0_BASE, 3, &ulValue);
 	//
-	// Place it in the circular buffer (advancing write index)
-	writeCircBuf (ADC_inBuffer, ulValue);
+    callback_func(ulValue);
 	//
 	// Clean up, clearing the interrupt
 	ADCIntClear(ADC0_BASE, 3);      
 }
 
-void adc_hal_register(uint32_t adc_id)
+void adc_hal_register(uint32_t adc_id, void(*callback)(uint32_t))
 {
+    callback_func = callback;
     if (adc_id < 4)
     {
-        ADC_inBuffer = initCircBuf (ADC_BUF_SIZE);
-
         // The ADC0 peripheral must be enabled for configuration and use.
         SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);
         
@@ -79,9 +75,4 @@ void adc_hal_start_conversion(uint32_t id)
     {
         ADCProcessorTrigger(ADC0_BASE, id);
     }
-}
-
-uint32_t readAdcBuf (void)
-{
-    readCircBuf (ADC_inBuffer);
 }

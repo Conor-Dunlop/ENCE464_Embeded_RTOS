@@ -22,12 +22,10 @@ enum ADC_ID{
 
 
 
-void adc_hal_register (uint32_t adc_id);
+void adc_hal_register (uint32_t adc_id, void(*callback)(uint32_t));
 
 void adc_hal_start_conversion (uint32_t id);
 
 void adc_hal_isr (void);
-
-uint32_t readAdcBuf(void);
 
 #endif //adc_hal_H_
