@@ -8,25 +8,14 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include "inc/hw_memmap.h"
-#include "inc/hw_types.h"
-#include "inc/hw_ints.h"
 #include "driverlib/gpio.h"
 #include "driverlib/i2c.h"
 #include "driverlib/sysctl.h"
-#include "driverlib/systick.h"
-#include "driverlib/debug.h"
 #include "driverlib/pin_map.h"
-#include "utils/ustdlib.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "utils/ustdlib.h"
-#include "buttons4.h"
 #include "acc.h"
 #include "i2c_driver.h"
 #include "circBufV.h"
-
 
 #include "accl_manager.h"
 
@@ -36,7 +25,7 @@
 // Constants and static vars
 //********************************************************
 #define BUF_SIZE 20 // WARNING: If this is set too high, we run out of heap space and the z-buffer gets garbled data
-static circBufVec_t acclBuffer;
+static circBufVec_t* acclBuffer;
 
 
 
@@ -56,7 +45,7 @@ void acclInit(void)
 {
     initAcclChip(); // Init the chip over I2C
 
-    initVecCircBuf(&acclBuffer, BUF_SIZE);
+    acclBuffer = initVecCircBuf(BUF_SIZE);
 }
 
 

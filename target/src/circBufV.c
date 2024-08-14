@@ -16,25 +16,40 @@
 #include "circBufV.h"
 
 // *******************************************************
+// Buffer structure
+struct circBufVec_t {
+	uint32_t size;		// Number of entries in buffer
+	uint32_t windex;	// index for writing, mod(size)
+	uint32_t rindex;	// index for reading, mod(size)
+	vector3_t *data;	// pointer to the data
+};
+
+// *******************************************************
 // initCircBuf: Initialise the circBuf instance. Reset both indices to
 // the start of the buffer.  Dynamically allocate and clear the the 
 // memory and return a pointer for the data.  Return NULL if 
 // allocation fails.
-vector3_t* initVecCircBuf (circBufVec_t *buffer, uint32_t size)
+circBufVec_t* initVecCircBuf (uint32_t size)
 {
+	circBufVec_t* buffer = (circBufVec_t*)malloc(sizeof(circBufVec_t));
 	buffer->windex = 0;
 	buffer->rindex = 0;
 	buffer->size = size;
-	buffer->data = 
-        (vector3_t *) calloc (size, sizeof(vector3_t));
-	return buffer->data;
+	buffer->data = (vector3_t*) calloc (size, sizeof(vector3_t));
+
+	if 	(buffer->data == NULL) {
+		free(buffer);
+		buffer = NULL;
+	}
+
+	return buffer;
 }
    // Note use of calloc() to clear contents.
 
 // *******************************************************
 // writeCircBuf: insert entry at the current windex location,
 // advance windex, modulo (buffer size).
-void writeVecCircBuf (circBufVec_t *buffer, vector3_t entry)
+void writeVecCircBuf (circBufVec_t* buffer, vector3_t entry)
 {
 	buffer->data[buffer->windex] = entry;
 	buffer->windex++;
@@ -46,7 +61,7 @@ void writeVecCircBuf (circBufVec_t *buffer, vector3_t entry)
 // readCircBuf: return entry at the current rindex location,
 // advance rindex, modulo (buffer size). The function deos not check
 // if reading has advanced ahead of writing.
-vector3_t readVecCircBuf (circBufVec_t *buffer)
+vector3_t readVecCircBuf (circBufVec_t* buffer)
 {
     vector3_t entry;
 	
@@ -61,12 +76,13 @@ vector3_t readVecCircBuf (circBufVec_t *buffer)
 // freeCircBuf: Releases the memory allocated to the buffer data,
 // sets pointer to NULL and ohter fields to 0. The buffer can
 // re-initialised by another call to initCircBuf().
-void freeVecCircBuf (circBufVec_t * buffer)
+void freeVecCircBuf (circBufVec_t* buffer)
 {
 	buffer->windex = 0;
 	buffer->rindex = 0;
 	buffer->size = 0;
 	free (buffer->data);
 	buffer->data = NULL;
+	free (buffer);
 }
 
