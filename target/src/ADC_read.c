@@ -44,7 +44,7 @@ void callback(uint32_t value) {
 
     writeCircBuf(ADC_inBuffer, value);
     
-    #ifndef ADC_TEST
+    #ifndef TESTING
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
     // Give semaphore from the ISR
@@ -52,7 +52,7 @@ void callback(uint32_t value) {
 
     // Perform context switch if required
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);  
-    #endif
+    #endif // TESTING
 }
 
 //*****************************************************************************

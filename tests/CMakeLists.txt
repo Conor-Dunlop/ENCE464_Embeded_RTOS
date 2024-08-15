@@ -5,7 +5,6 @@ enable_testing()
 add_subdirectory(unity)
 set(SRC_DIR ../target/src)
 
-
 add_unity_test(test_example test_example.c)
 add_unity_test(test_fff test_fff.c)
 
@@ -22,5 +21,5 @@ target_compile_definitions(test_adc_hal PRIVATE PART_TM4C123GH6PM)
 
 add_unity_test(test_adc test_adc.c ${SRC_DIR}/ADC_read.c ${SRC_DIR}/adc_hal.c)
 target_include_directories(test_adc PRIVATE ${SRC_DIR} ${TIVAWARE_DIR} ${MOCK_DIR} ${RTOS_DIR})
-target_compile_definitions(test_adc PRIVATE PART_TM4C123GH6PM)
+target_compile_definitions(test_adc PRIVATE PART_TM4C123GH6PM TESTING)
 
