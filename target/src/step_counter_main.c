@@ -39,6 +39,7 @@
 #include "queue.h"
 #include "switches.h"
 #include "buttons4.h"
+#include "timers.h"
 
 #ifdef SERIAL_PLOTTING_ENABLED
 #include "serial_sender.h"
@@ -57,6 +58,7 @@
 #define RATE_IO_HZ 75
 #define POT_HZ 50
 #define RATE_ACCL_HZ 200
+#define RATE_BLINK_HZ 10
 #define RATE_DISPLAY_UPDATE_HZ 5
 #define FLASH_MESSAGE_TIME 3/2 // seconds
 
@@ -96,6 +98,7 @@ const TickType_t xAcclFrequency = pdMS_TO_TICKS(1000 / RATE_ACCL_HZ);
 const TickType_t xIOFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
 const TickType_t xPotFrequency = pdMS_TO_TICKS(1000 / POT_HZ);
 const TickType_t xDispFrequency = pdMS_TO_TICKS(1000 / RATE_DISPLAY_UPDATE_HZ);
+const TickType_t xBlinkFrequency = pdMS_TO_TICKS(1000 / RATE_BLINK_HZ);
 
 #ifdef SERIAL_PLOTTING_ENABLED
 const TickType_t xSerialFrequency = pdMS_TO_TICKS(1000 / RATE_SERIAL_PLOT_HZ);
@@ -107,17 +110,8 @@ unsigned long lastPotProcess = 0;
 unsigned long lastAcclProcess = 0;
 unsigned long lastDisplayProcess = 0;
 
+volatile bool timerResetAfterExpiry = false;  // Flag to check if the timer was reset after expiry
 
-
-/***********************************************************
- * Initialisation functions
- ***********************************************************/
-void initClock (void)
-{
-    // Set the clock rate to 20 MHz
-    SysCtlClockSet (SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
-                   SYSCTL_XTAL_16MHZ);
-}
 
 /***********************************************************
  * Helper functions
@@ -141,9 +135,61 @@ void flashMessage(char* toShow)
     }
 }
 
+void vTimerCallback(TimerHandle_t xTimer) {
+    // Code to execute when the timer expires
+    xSemaphoreGive(xPromptSemaphore);
+}
+
+
+/***********************************************************
+ * Initialisation functions
+ ***********************************************************/
+void initClock (void)
+{
+    // Set the clock rate to 80 MHz
+    SysCtlClockSet (SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
+                   SYSCTL_XTAL_16MHZ);
+}
+
+void initTimer (void)
+{
+    // Create timers
+    const TickType_t xTimerPeriod = pdMS_TO_TICKS(5000);
+
+    xMoveTimer = xTimerCreate("MovementTimer", // Name of the timer
+                            xTimerPeriod,      // Period of the timer
+                            pdFALSE,            // Auto-reload (pdFALSE for single-shot)
+                            (void*)0,          // Timer ID (not used here)
+                            vTimerCallback);   // Callback function
+    
+    xTimerStart(xMoveTimer, 0);
+}
+
+void initLED (void)
+{
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1);
+}
+
+
 /***********************************************************
  * FreeRTOS System Tasks
  ***********************************************************/
+
+// Blink Red LED
+void blink(void* args) {
+    (void)args; // unused
+
+    TickType_t wake_time = xTaskGetTickCount();
+
+    for(;;) {
+        if (xSemaphoreTake(xPromptSemaphore, 0) == pdTRUE) {
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, -1);
+        }  
+
+        vTaskDelayUntil(&wake_time, xBlinkFrequency);
+    }
+}
 
 // Poll the buttons
 static void poll_butt_and_switch(void *arg)
@@ -364,12 +410,16 @@ int main(void)
     acclInit();
     initADC();
     initButtons();
+    initTimer();
+    initLED();
 
     #ifdef SERIAL_PLOTTING_ENABLED
     SerialInit ();
     #endif // SERIAL_PLOTTING_ENABLED
 
     // Create tasks
+    xTaskCreate(&blink, "blink", 512, NULL, 1, NULL);
+
     xTaskCreate(write_to_display, "WriteToDisplay", 512, NULL, 2, NULL);
 
     xTaskCreate(update_newGoal, "UpdateNewGoal", 512, NULL, 1, NULL);

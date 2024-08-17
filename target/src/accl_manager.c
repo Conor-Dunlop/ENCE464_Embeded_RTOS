@@ -57,10 +57,19 @@ void acclInit(void)
 // Run periodically to store acceleration to the circular buffer
 void acclProcess(void)
 {   
+    static uint16_t old_combined = 0;
     vector3_t acceleration = getAcclData();
     writeVecCircBuf(acclBuffer, acceleration);
     uint16_t combined = acclMean();
+    if (abs(old_combined - combined) > 10) {
+        // Reset timer
+        xTimerReset(xMoveTimer, 0);
+        // Signal to stop move prompt
+        xSemaphoreTake(xPromptSemaphore, 0);
+        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 1);
+    }
     xQueueSend(accl_q, &combined, portMAX_DELAY);
+    old_combined = combined;
 }
 
 
