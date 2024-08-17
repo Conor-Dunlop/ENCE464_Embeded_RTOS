@@ -48,6 +48,7 @@
 #include "accl_manager.h"
 #include "display_manager.h"
 #include "button_manager.h"
+#include "speed_tracker.h"
 
 #include "step_counter_main.h"
 
@@ -321,6 +322,7 @@ static void write_to_display(void* args) {
         } else {
             secondsElapsed = 0;
         }
+
         displayUpdate(deviceState, secondsElapsed, false);
     }
 }
@@ -412,6 +414,7 @@ int main(void)
     initButtons();
     initTimer();
     initLED();
+    initSpeedTracker(&SpeedTracker);
 
     #ifdef SERIAL_PLOTTING_ENABLED
     SerialInit ();
