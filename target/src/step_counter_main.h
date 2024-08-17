@@ -10,17 +10,19 @@
 #ifndef STEP_COUNTER_MAIN_H_
 #define STEP_COUNTER_MAIN_H_
 
+#include <stdbool.h>
+
 #define M_PER_STEP 9/10
 #define MAX_STR_LEN 16
 
 #define DEBUG_STEP_INCREMENT 100
 #define DEBUG_STEP_DECREMENT 500
 
+#define DISPLAY_NUM_STATES 3
 typedef enum {
     DISPLAY_STEPS = 0,
     DISPLAY_DISTANCE,
     DISPLAY_SET_GOAL,
-    DISPLAY_NUM_STATES, // Automatically enumerates to the number of display states there can be
 } displayMode_t;
 
 
