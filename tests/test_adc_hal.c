@@ -9,7 +9,7 @@ DEFINE_FFF_GLOBALS
 
 #include "tiva_mocks/adc_mock.h"
 #include "tiva_mocks/sysctl_mock.h"
-#include "circBufT.h"
+#include "circ_buf_t.h"
 
 /* Helper functions */
 void reset_fff(void)

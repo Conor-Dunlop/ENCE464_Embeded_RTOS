@@ -1,27 +1,26 @@
 // *******************************************************
 // 
-// circBufV.c
+// circ_buf_t.c
 //
-// Support for a circular buffer of vector3 (3*int16_t) values on the
+// Support for a circular buffer of uint32_t values on the 
 //  Tiva processor.
-// P.J. Bones UCECE, Tim Preston-Marshall
-// Last modified:  3.5.2022
+// P.J. Bones UCECE
+// Last modified:  8.3.2017
 // 
-// FitnessThur9-1
-//
 // *******************************************************
 
 #include <stdint.h>
 #include "stdlib.h"
-#include "circBufV.h"
+#include "circ_buf_t.h"
 
 // *******************************************************
 // Buffer structure
-struct circBufVec_t {
+
+struct circBuf_t {
 	uint32_t size;		// Number of entries in buffer
 	uint32_t windex;	// index for writing, mod(size)
 	uint32_t rindex;	// index for reading, mod(size)
-	vector3_t *data;	// pointer to the data
+	uint32_t *data;		// pointer to the data
 };
 
 // *******************************************************
@@ -29,13 +28,13 @@ struct circBufVec_t {
 // the start of the buffer.  Dynamically allocate and clear the the 
 // memory and return a pointer for the data.  Return NULL if 
 // allocation fails.
-circBufVec_t* initVecCircBuf (uint32_t size)
+circBuf_t* initCircBuf (uint32_t size)
 {
-	circBufVec_t* buffer = (circBufVec_t*)malloc(sizeof(circBufVec_t));
+	circBuf_t* buffer = (circBuf_t*)malloc(sizeof(circBuf_t));
 	buffer->windex = 0;
 	buffer->rindex = 0;
 	buffer->size = size;
-	buffer->data = (vector3_t*) calloc (size, sizeof(vector3_t));
+	buffer->data = (uint32_t*) calloc (size, sizeof(uint32_t));
 
 	if 	(buffer->data == NULL) {
 		free(buffer);
@@ -49,7 +48,7 @@ circBufVec_t* initVecCircBuf (uint32_t size)
 // *******************************************************
 // writeCircBuf: insert entry at the current windex location,
 // advance windex, modulo (buffer size).
-void writeVecCircBuf (circBufVec_t* buffer, vector3_t entry)
+void writeCircBuf (circBuf_t *buffer, uint32_t entry)
 {
 	buffer->data[buffer->windex] = entry;
 	buffer->windex++;
@@ -59,30 +58,34 @@ void writeVecCircBuf (circBufVec_t* buffer, vector3_t entry)
 
 // *******************************************************
 // readCircBuf: return entry at the current rindex location,
-// advance rindex, modulo (buffer size). The function deos not check
-// if reading has advanced ahead of writing.
-vector3_t readVecCircBuf (circBufVec_t* buffer)
+// advance rindex, modulo (buffer size). The function checks for 
+// unwritten data to error if rindex has not overtaken windex.
+uint32_t readCircBuf (circBuf_t *buffer)
 {
-    vector3_t entry;
+	uint32_t entry;
+	if (buffer->data != 0) {
+		entry = buffer->data[buffer->rindex];
+		buffer->rindex++;
+		if (buffer->rindex >= buffer->size)
+			buffer->rindex = 0;
+		return entry;
+	} else {
+		return 0;
+	}
 	
-	entry = buffer->data[buffer->rindex];
-	buffer->rindex++;
-	if (buffer->rindex >= buffer->size)
-	   buffer->rindex = 0;
-    return entry;
 }
 
 // *******************************************************
 // freeCircBuf: Releases the memory allocated to the buffer data,
-// sets pointer to NULL and ohter fields to 0. The buffer can
+// sets pointer to NULL and other fields to 0. The buffer can
 // re-initialised by another call to initCircBuf().
-void freeVecCircBuf (circBufVec_t* buffer)
+void freeCircBuf (circBuf_t * buffer)
 {
 	buffer->windex = 0;
 	buffer->rindex = 0;
 	buffer->size = 0;
 	free (buffer->data);
 	buffer->data = NULL;
-	free (buffer);
+	//free(buffer); memory leak go brrrrrr
 }
 

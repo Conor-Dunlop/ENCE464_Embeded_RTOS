@@ -5,7 +5,7 @@
 DEFINE_FFF_GLOBALS;
 #define FFF_MOCK_IMPL // Includes mock implementations
 
-#include "circBufT_mock.h"
+#include "circ_buf_t_mock.h"
 #include "tiva_mocks/adc_mock.h"
 #include "tiva_mocks/sysctl_mock.h"
 #include "adc_hal.h"
@@ -20,7 +20,7 @@ void reset_fff(void)
 {
     FFF_ADC_FAKES_LIST(RESET_FAKE);
     FFF_SYSCTL_FAKES_LIST(RESET_FAKE);
-    FFF_CIRCBUFT_FAKES_LIST(RESET_FAKE);
+    FFF_circ_buf_t_FAKES_LIST(RESET_FAKE);
     FFF_RESET_HISTORY();
 }
 

@@ -17,7 +17,7 @@
 #include "driverlib/pin_map.h"
 #include "acc.h"
 #include "i2c_driver.h"
-#include "circBufV.h"
+#include "circ_buf_v.h"
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "synch.h"
@@ -29,7 +29,7 @@
 //********************************************************
 // Constants and static vars
 //********************************************************
-static circBufVec_t* acclBuffer;
+static circ_buf_vec_t* acclBuffer;
 
 
 

@@ -30,7 +30,7 @@
 #include "utils/ustdlib.h"
 #include "acc.h"
 #include "math.h"
-#include "circBufV.h"
+#include "circ_buf_v.h"
 #include "ADC_read.h"
 #include "FreeRTOS.h"
 #include "task.h"
