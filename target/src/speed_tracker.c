@@ -9,7 +9,7 @@ void initSpeedTracker(SpeedTracker_t* tracker) {
     tracker->currentSpeed = 0.0f;
 }
 
-float updateSpeed(SpeedTracker_t* tracker, uint16_t currentTime, uint32_t currentDistance) 
+float updateSpeed(SpeedTracker_t* tracker, uint16_t currentTime, float currentDistance) 
 {
     // Calculate time difference in seconds
     uint32_t timeDifference = currentTime - tracker->previousTime;

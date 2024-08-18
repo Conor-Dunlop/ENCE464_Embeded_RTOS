@@ -12,6 +12,6 @@ typedef struct {
 extern SpeedTracker_t SpeedTracker;
 
 void initSpeedTracker(SpeedTracker_t* tracker);
-float updateSpeed(SpeedTracker_t* tracker, uint16_t currentTime, uint32_t currentDistance);
+float updateSpeed(SpeedTracker_t* tracker, uint16_t currentTime, float currentDistance);
 
 #endif /* STEP_COUNTER_MAIN_H_ */
