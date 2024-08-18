@@ -17,7 +17,7 @@ set(MOCK_DIR mocks)
 
 add_unity_test(test_adc_hal test_adc_hal.c ${SRC_DIR}/adc_hal.c ${SRC_DIR}/circ_buf_t.c)
 target_include_directories(test_adc_hal PRIVATE ${SRC_DIR} ${TIVAWARE_DIR} ${MOCK_DIR} ${RTOS_DIR})
-target_compile_definitions(test_adc_hal PRIVATE PART_TM4C123GH6PM)
+target_compile_definitions(test_adc_hal PRIVATE PART_TM4C123GH6PM TESTING)
 
 add_unity_test(test_adc test_adc.c ${SRC_DIR}/ADC_read.c ${SRC_DIR}/adc_hal.c)
 target_include_directories(test_adc PRIVATE ${SRC_DIR} ${TIVAWARE_DIR} ${MOCK_DIR} ${RTOS_DIR})

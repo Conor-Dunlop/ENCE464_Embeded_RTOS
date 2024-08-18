@@ -52,7 +52,9 @@ void adc_hal_register(uint32_t adc_id, void(*callback)(uint32_t))
     {
         // The ADC0 peripheral must be enabled for configuration and use.
         SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);
+        #ifndef TESTING
         while (!SysCtlPeripheralReady(SYSCTL_PERIPH_ADC0)) {}
+        #endif // TESTING
         
         // Enable sample sequence 3 with a processor signal trigger.  Sequence 3
         // will do a single sample when the processor sends a signal to start the
