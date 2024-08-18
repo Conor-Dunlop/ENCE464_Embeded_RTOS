@@ -104,7 +104,7 @@ checkSwitch (uint8_t butName)
 }
 
 
-//A function that returns the switch state in order to abstract GPIO functions in other modules
+// A function that returns the switch state in order to abstract GPIO functions in other modules
 bool isSwitchUp(uint8_t SWNames) {
     return sw_state[SWNames];
 }

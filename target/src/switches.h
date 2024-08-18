@@ -15,7 +15,7 @@
 //*****************************************************************************
 // Constants
 //*****************************************************************************
-enum SWNames {SW2 = 0, SW1, NUM_SW};
+enum SWNames {SW1 = 0, SW2, NUM_SW};
 enum SWStates {SW_UP = 0, SW_DOWN, SW_NO_CHANGE};
 
 // Switch peripheral
