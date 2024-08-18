@@ -8,9 +8,22 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "driverlib/sysctl.h"
 #include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "inc/hw_ints.h"
 #include "driverlib/adc.h"
+#include "driverlib/pwm.h"
+#include "driverlib/gpio.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/systick.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/debug.h"
+#include "utils/ustdlib.h"
+#include "adc_hal.h"
+#include "circ_buf_t.h"
+#include "synch.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 #define ADC_BUF_SIZE 10
 
@@ -23,11 +36,13 @@ void adc_hal_isr (void)
 	// Get the single sample from ADC0.  ADC_BASE is defined in
 	// inc/hw_memmap.h
 	ADCSequenceDataGet(ADC0_BASE, 3, &ulValue);
-	//
-    callback_func(ulValue);
-	//
+
+    //
 	// Clean up, clearing the interrupt
-	ADCIntClear(ADC0_BASE, 3);      
+	ADCIntClear(ADC0_BASE, 3);  
+    //
+    callback_func(ulValue);
+	   
 }
 
 void adc_hal_register(uint32_t adc_id, void(*callback)(uint32_t))
@@ -37,6 +52,9 @@ void adc_hal_register(uint32_t adc_id, void(*callback)(uint32_t))
     {
         // The ADC0 peripheral must be enabled for configuration and use.
         SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);
+        #ifndef TESTING
+        while (!SysCtlPeripheralReady(SYSCTL_PERIPH_ADC0)) {}
+        #endif // TESTING
         
         // Enable sample sequence 3 with a processor signal trigger.  Sequence 3
         // will do a single sample when the processor sends a signal to start the
@@ -62,6 +80,10 @@ void adc_hal_register(uint32_t adc_id, void(*callback)(uint32_t))
         //
         // Register the interrupt handler
         ADCIntRegister (ADC0_BASE, adc_id, adc_hal_isr);
+
+        //
+        // Set priority of ADC interrupt handler to be compatible with FreeRTOS API
+        IntPrioritySet(INT_ADC0SS3, pdTM4C_RTOS_INTERRUPT_PRIORITY(1));
     
         //
         // Enable interrupts for ADC0 sequence 3 (clears any outstanding interrupts)

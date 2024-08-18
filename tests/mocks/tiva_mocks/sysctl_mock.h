@@ -11,6 +11,11 @@
 #endif
 
 #define FFF_SYSCTL_FAKES_LIST(FUNC)     \
-    FUNC(SysCtlPeripheralEnable)        
+    FUNC(SysCtlPeripheralEnable)        \
+    FUNC(IntPrioritySet)            	\
+    FUNC(SysCtlPeripheralReady) 
 
 VOID_FUNC(SysCtlPeripheralEnable, uint32_t);
+VOID_FUNC(IntPrioritySet, uint32_t, uint8_t);
+VALUE_FUNC(bool, SysCtlPeripheralReady, uint32_t);
+

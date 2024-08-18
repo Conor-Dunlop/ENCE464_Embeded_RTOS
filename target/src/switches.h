@@ -15,13 +15,20 @@
 //*****************************************************************************
 // Constants
 //*****************************************************************************
-//enum SWNames {UP = 0, DOWN, LEFT, RIGHT, NUM_BUTS};
+enum SWNames {SW1 = 0, SW2, NUM_SW};
 enum SWStates {SW_UP = 0, SW_DOWN, SW_NO_CHANGE};
-// SW1
-#define SW1_PERIPH  SYSCTL_PERIPH_GPIOA
+
+// Switch peripheral
+#define SW_PERIPH  SYSCTL_PERIPH_GPIOA
+
+// SW1 (RIGHT)
 #define SW1_PORT_BASE  GPIO_PORTA_BASE
 #define SW1_PIN  GPIO_PIN_7
 #define SW1_NORMAL  false
+// SW2 (LEFT)
+#define SW2_PORT_BASE  GPIO_PORTA_BASE
+#define SW2_PIN  GPIO_PIN_6
+#define SW2_NORMAL  false
 
 
 #define NUM_SW_POLLS 3
@@ -41,11 +48,18 @@ void initSwitch (void);
 // updateSwitch: Function designed to be called regularly. It polls the switch
 // and updates variables associated with the switch if
 // necessary.
- void updateSwitch (void);
+void updateSwitch (void);
 
 
 // *******************************************************
 // Function that returns the state of the switch. Used to abstract GPIO function calls in other modules
-bool isSwitchUp(void);
+bool isSwitchUp(uint8_t SWNames);
+
+
+// *******************************************************
+// checkSwitch: Function returns the new switch logical state if the switch
+// logical state (SW_UP or SW_DOWN) has changed since the last call,
+// otherwise returns SW_NO_CHANGE.
+uint8_t checkSwitch (uint8_t butName);
 
 #endif /*SWITCHES_H_*/

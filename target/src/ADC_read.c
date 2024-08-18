@@ -11,8 +11,22 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "inc/hw_ints.h"
+#include "driverlib/adc.h"
+#include "driverlib/pwm.h"
+#include "driverlib/gpio.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/systick.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/debug.h"
+#include "utils/ustdlib.h"
 #include "adc_hal.h"
-#include "circBufT.h"
+#include "circ_buf_t.h"
+#include "synch.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 
 //*****************************************************************************
@@ -27,7 +41,18 @@
 static circBuf_t* ADC_inBuffer;		// Buffer of size BUF_SIZE integers (sample values)
 
 void callback(uint32_t value) {
+
     writeCircBuf(ADC_inBuffer, value);
+    
+    #ifndef TESTING
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    // Give semaphore from the ISR
+    xSemaphoreGiveFromISR(xADCSemaphore, &xHigherPriorityTaskWoken);
+
+    // Perform context switch if required
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);  
+    #endif // TESTING
 }
 
 //*****************************************************************************
@@ -37,12 +62,9 @@ void callback(uint32_t value) {
 //*****************************************************************************
 void pollADC(void)
 {
-    adc_hal_start_conversion (ADC_BUF_ID);
     //
     // Initiate a conversion
-    //
-    
-//    g_ulSampCnt++;
+    adc_hal_start_conversion (ADC_BUF_ID);
 }
 
 //*****************************************************************************
@@ -53,7 +75,7 @@ void pollADC(void)
 //*****************************************************************************
 void ADCIntHandler(void)
 {
-    adc_hal_isr ();                    
+    adc_hal_isr ();                
 }
 
 //*****************************************************************************
@@ -62,7 +84,6 @@ void ADCIntHandler(void)
 
 void initADC (void)
 {
-    //
     ADC_inBuffer = initCircBuf (ADC_BUF_SIZE);
     adc_hal_register (ADC_BUF_ID, callback);
 }

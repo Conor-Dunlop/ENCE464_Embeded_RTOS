@@ -1,5 +1,5 @@
 #include "unity.h"
-#include "circBufT.h"
+#include "circ_buf_t.h"
 #include "stdlib.h"
 
 const uint8_t STANDARD_TEST_CAPACITY = 5;

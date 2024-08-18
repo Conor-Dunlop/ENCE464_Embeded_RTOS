@@ -20,6 +20,8 @@
     FUNC(ADCSequenceEnable)             \
     FUNC(ADCIntRegister)                \
     FUNC(ADCIntEnable)                  
+    // FUNC(xSemaphoreGiveFromISR)         \
+    // FUNC(portYIELD_FROM_ISR)
 
 typedef void (*void_function_ptr_type)(void);
 
@@ -31,3 +33,5 @@ VOID_FUNC(ADCSequenceConfigure, uint32_t, uint32_t, uint32_t, uint32_t);
 VOID_FUNC(ADCSequenceEnable, uint32_t, uint32_t);
 VOID_FUNC(ADCIntRegister, uint32_t, uint32_t, void_function_ptr_type);
 VOID_FUNC(ADCIntEnable, uint32_t, uint32_t);
+// VOID_FUNC(xSemaphoreGiveFromISR, QueueHandle_t, BaseType_t *);
+// VOID_FUNC(portYIELD_FROM_ISR, int16_t);

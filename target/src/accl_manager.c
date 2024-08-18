@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <math.h>
 #include "inc/hw_memmap.h"
 #include "driverlib/gpio.h"
 #include "driverlib/i2c.h"
@@ -15,7 +17,10 @@
 #include "driverlib/pin_map.h"
 #include "acc.h"
 #include "i2c_driver.h"
-#include "circBufV.h"
+#include "circ_buf_v.h"
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "synch.h"
 
 #include "accl_manager.h"
 
@@ -24,8 +29,7 @@
 //********************************************************
 // Constants and static vars
 //********************************************************
-#define BUF_SIZE 20 // WARNING: If this is set too high, we run out of heap space and the z-buffer gets garbled data
-static circBufVec_t* acclBuffer;
+static circ_buf_vec_t* acclBuffer;
 
 
 
@@ -52,15 +56,30 @@ void acclInit(void)
 
 // Run periodically to store acceleration to the circular buffer
 void acclProcess(void)
-{
+{   
+    static uint16_t old_combined = 0;
+
     vector3_t acceleration = getAcclData();
-    writeVecCircBuf(&acclBuffer, acceleration);
+    writeVecCircBuf(acclBuffer, acceleration);
+
+    uint16_t combined = acclMean();
+
+    if (abs(old_combined - combined) > 5) {
+        xQueueSend(accl_q, &combined, portMAX_DELAY);
+        // Reset timer
+        xTimerReset(xMoveTimer, 0);
+        // Signal to stop move prompt
+        xSemaphoreTake(xPromptSemaphore, 0);
+        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 1);
+    }
+    
+    old_combined = combined;
 }
 
 
 
 // Return the mean acceleration stored within the circular buffers
-vector3_t acclMean(void)
+uint16_t acclMean(void)
 {
     // Sum with 32-bit ints to prevent overflow, then dividing the total sum for better accuracy
     int32_t result_x = 0;
@@ -69,7 +88,7 @@ vector3_t acclMean(void)
 
     uint8_t i = 0;
     for (i = 0; i < BUF_SIZE; i++) {
-        vector3_t nextVector = readVecCircBuf(&acclBuffer);
+        vector3_t nextVector = readVecCircBuf(acclBuffer);
         result_x = result_x + nextVector.x;
         result_y = result_y + nextVector.y;
         result_z = result_z + nextVector.z;
@@ -80,7 +99,8 @@ vector3_t acclMean(void)
     result.y = result_y / BUF_SIZE;
     result.z = result_z / BUF_SIZE;
 
-    return result;
+    uint16_t combined = sqrt(result.x*result.x + result.y*result.y + result.z*result.z);
+    return combined;
 }
 
 

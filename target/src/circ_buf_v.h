@@ -1,46 +1,51 @@
-#ifndef CIRCBUFT_H_
-#define CIRCBUFT_H_
+#ifndef circ_buf_t_H_
+#define circ_buf_t_H_
 
 // *******************************************************
 // 
-// circBufT.h
+// circBufV.h
 //
-// Support for a circular buffer of uint32_t values on the 
+// Support for a circular buffer of vector3 (3*int16_t) values on the
 //  Tiva processor.
-// P.J. Bones UCECE
-// Last modified:  7.3.2017
+// P.J. Bones UCECE, Tim Preston-Marshall
+// Last modified:  3.5.2022
+//
+// FitnessThur9-1
 // 
 // *******************************************************
 #include <stdint.h>
 
-typedef struct circBuf_t circBuf_t;
+
+typedef struct{
+    int16_t x;
+    int16_t y;
+    int16_t z;
+} vector3_t;
+
+typedef struct circ_buf_vec_t circ_buf_vec_t;
 
 // *******************************************************
 // initCircBuf: Initialise the circBuf instance. Reset both indices to
 // the start of the buffer.  Dynamically allocate and clear the the 
 // memory and return a pointer for the data.  Return NULL if 
 // allocation fails.
-circBuf_t *
-initCircBuf (uint32_t size);
+circ_buf_vec_t* initVecCircBuf (uint32_t size);
 
 // *******************************************************
 // writeCircBuf: insert entry at the current windex location,
 // advance windex, modulo (buffer size).
-void
-writeCircBuf (circBuf_t *buffer, uint32_t entry);
+void writeVecCircBuf (circ_buf_vec_t *buffer, vector3_t entry);
 
 // *******************************************************
 // readCircBuf: return entry at the current rindex location,
 // advance rindex, modulo (buffer size). The function deos not check
 // if reading has advanced ahead of writing.
-uint32_t
-readCircBuf (circBuf_t *buffer);
+vector3_t readVecCircBuf (circ_buf_vec_t *buffer);
 
 // *******************************************************
 // freeCircBuf: Releases the memory allocated to the buffer data,
 // sets pointer to NULL and other fields to 0. The buffer can
 // re initialised by another call to initCircBuf().
-void
-freeCircBuf (circBuf_t *buffer);
+void freeVecCircBuf (circ_buf_vec_t *buffer);
 
-#endif /*CIRCBUFT_H_*/
+#endif /*circ_buf_t_H_*/

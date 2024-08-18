@@ -21,24 +21,34 @@
 // *******************************************************
 // Globals to module
 // *******************************************************
-static bool SW_state;	// Corresponds to the electrical state
-static uint8_t SW_count;
-static bool SW_flag;
-//static bool SW_normal;   // Corresponds to the electrical state
+static bool sw_state[NUM_SW];	// Corresponds to the electrical state
+static uint8_t sw_count[NUM_SW];
+static bool sw_flag[NUM_SW];
+static bool sw_normal[NUM_SW];   // Corresponds to the electrical state
 
 // *******************************************************
 // initSwitch: Initialise the variables associated with SW1
 void initSwitch (void)
 {
-	// UP button (active HIGH)
-    SysCtlPeripheralEnable (SW1_PERIPH);
+    SysCtlPeripheralEnable (SW_PERIPH);
+
+	// RIGHT Switch
     GPIOPinTypeGPIOInput (SW1_PORT_BASE, SW1_PIN);
     GPIOPadConfigSet (SW1_PORT_BASE, SW1_PIN, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPD);
-//    SW_normal = SW1_NORMAL;
 
-    SW_state = SW1_NORMAL;
-    SW_count = 0;
-    SW_flag = false;
+    sw_normal[SW1] = SW1_NORMAL;
+    sw_state[SW1] = SW1_NORMAL;
+    sw_count[SW1] = 0;
+    sw_flag[SW1] = false;
+
+    // LEFT Switch
+    GPIOPinTypeGPIOInput (SW2_PORT_BASE, SW2_PIN);
+    GPIOPadConfigSet (SW2_PORT_BASE, SW2_PIN, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPD);
+    
+    sw_normal[SW2] = SW2_NORMAL;
+    sw_state[SW2] = SW2_NORMAL;
+    sw_count[SW2] = 0;
+    sw_flag[SW2] = false;
 }
 
 
@@ -50,31 +60,51 @@ void initSwitch (void)
 // a flag is set.  Set NUM_SW_POLLS according to the polling rate.
 void updateSwitch (void)
 {
-    bool SW_value;
-
-    // Read the pins; true means HIGH, false means LOW
-    SW_value = (GPIOPinRead (SW1_PORT_BASE, SW1_PIN) == SW1_PIN);
-
-
-    if (SW_value != SW_state)
-    {
-        SW_count++;
-        if (SW_count >= NUM_SW_POLLS)
+    bool sw_value[NUM_SW];
+	int i;
+	
+	// Read the pins; true means HIGH, false means LOW
+	sw_value[SW2] = (GPIOPinRead (SW2_PORT_BASE, SW2_PIN) == SW2_PIN);
+	sw_value[SW1] = (GPIOPinRead (SW1_PORT_BASE, SW1_PIN) == SW1_PIN);
+	// Iterate through the switches, updating switch variables as required
+	for (i = 0; i < NUM_SW; i++)
+	{
+        if (sw_value[i] != sw_state[i])
         {
-            SW_state = SW_value;
-            SW_flag = true;    // Reset by call to checkButton()
-            SW_count = 0;
+        	sw_count[i]++;
+        	if (sw_count[i] >= NUM_SW_POLLS)
+        	{
+        		sw_state[i] = sw_value[i];
+        		sw_flag[i] = true;	   // Reset by call to checkSwitch()
+        		sw_count[i] = 0;
+        	}
         }
-    }
-    else
-        SW_count = 0;
-
+        else
+        	sw_count[i] = 0;
+	}
 }
 
 
+// *******************************************************
+// checkSwitch: Function returns the new switch logical state if the switch
+// logical state (SW_UP or SW_DOWN) has changed since the last call,
+// otherwise returns SW_NO_CHANGE.
+uint8_t
+checkSwitch (uint8_t butName)
+{
+	if (sw_flag[butName])
+	{
+		sw_flag[butName] = false;
+		if (sw_state[butName] == sw_normal[butName])
+			return SW_UP;
+		else
+			return SW_DOWN;
+	}
+	return SW_NO_CHANGE;
+}
 
 
-//A function that returns the switch state in order to abstract GPIO functions in other modules
-bool isSwitchUp(void) {
-    return SW_state;
+// A function that returns the switch state in order to abstract GPIO functions in other modules
+bool isSwitchUp(uint8_t SWNames) {
+    return sw_state[SWNames];
 }
