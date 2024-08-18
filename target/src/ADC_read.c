@@ -23,7 +23,7 @@
 #include "driverlib/debug.h"
 #include "utils/ustdlib.h"
 #include "adc_hal.h"
-#include "circBufT.h"
+#include "circ_buf_t.h"
 #include "synch.h"
 #include "FreeRTOS.h"
 #include "task.h"
