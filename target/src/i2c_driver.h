@@ -1,6 +1,11 @@
 #ifndef I2C_DRIVER_H_
 #define I2C_DRIVER_H_
 
+#include <stdint.h>
+#include <stdbool.h>
+#include "driverlib/i2c.h"
+#include "inc/hw_memmap.h"
+
 /*******************************************************
  *
  * i2c_driver.h

@@ -12,6 +12,7 @@
 // 
 // *******************************************************
 #include <stdint.h>
+#include "stdlib.h"
 
 typedef struct circBuf_t circBuf_t;
 

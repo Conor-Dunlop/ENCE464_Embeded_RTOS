@@ -15,40 +15,19 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include "inc/hw_memmap.h"
-#include "inc/hw_types.h"
-#include "inc/hw_ints.h"
 #include "driverlib/gpio.h"
 #include "driverlib/sysctl.h"
-#include "driverlib/systick.h"
-#include "driverlib/debug.h"
-#include "driverlib/pin_map.h"
-#include "utils/ustdlib.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "utils/ustdlib.h"
-#include "acc.h"
-#include "math.h"
 #include "circ_buf_v.h"
 #include "ADC_read.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "semphr.h"
 #include "synch.h"
-#include "queue.h"
-#include "switches.h"
 #include "buttons4.h"
-#include "timers.h"
+#include "display_manager.h"
+#include "button_manager.h"
 
 #ifdef SERIAL_PLOTTING_ENABLED
 #include "serial_sender.h"
 #endif //SERIAL_PLOTTING_ENABLED
-
-#include "accl_manager.h"
-#include "display_manager.h"
-#include "button_manager.h"
-#include "speed_tracker.h"
 
 #include "step_counter_main.h"
 

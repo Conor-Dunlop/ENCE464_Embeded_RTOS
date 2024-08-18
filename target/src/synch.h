@@ -2,12 +2,9 @@
 #define SYNCH_H
 
 #include "FreeRTOS.h"
-#include "task.h"
 #include "semphr.h"
-#include "queue.h"
 #include "accl_manager.h"
 #include "timers.h"
-#include "step_counter_main.h"
 
 // Declare semaphore handles
 extern SemaphoreHandle_t xADCSemaphore;

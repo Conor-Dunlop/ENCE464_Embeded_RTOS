@@ -1,11 +1,7 @@
 #ifndef adc_hal_H_
 #define adc_hal_H_
 
-// #define ADC_ID_1 1
-
 #include <stdint.h>
-#include "circ_buf_t.h"
-//Need to change name
 
 //*****************************************************************************
 //
@@ -13,8 +9,6 @@
 // Takes calls form ADC_read then calls tivaware to pass values between.
 //
 //*****************************************************************************
-
-//typedef void(*callback)(uint32_t);
 
 enum ADC_ID{
     ADC_ID_1 = 1

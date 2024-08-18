@@ -1,11 +1,6 @@
 #ifndef ADC_READ_H_
 #define ADC_READ_H_
 
-#include <stdint.h>
-#include "FreeRTOS.h"
-#include "semphr.h"
-#include "task.h"
-
 //*****************************************************************************
 //
 // The handler for the ADC conversion complete interrupt.

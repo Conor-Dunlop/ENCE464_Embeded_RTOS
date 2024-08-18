@@ -12,6 +12,11 @@
 #ifndef DISPLAY_MANAGER_H_
 #define DISPLAY_MANAGER_H_
 
+#include <stdlib.h>
+#include "utils/ustdlib.h"
+#include "OrbitOLED/OrbitOLEDInterface.h"
+
+#include "speed_tracker.h"
 #include "step_counter_main.h"
 
 

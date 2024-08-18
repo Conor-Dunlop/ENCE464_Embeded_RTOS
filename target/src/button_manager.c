@@ -13,8 +13,6 @@
 #include <stdbool.h>
 #include "buttons4.h"
 #include "button_manager.h"
-#include "switches.h"
-#include "synch.h"
 
 
 //********************************************************

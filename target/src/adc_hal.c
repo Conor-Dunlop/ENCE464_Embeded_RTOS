@@ -12,18 +12,13 @@
 #include "inc/hw_types.h"
 #include "inc/hw_ints.h"
 #include "driverlib/adc.h"
-#include "driverlib/pwm.h"
-#include "driverlib/gpio.h"
 #include "driverlib/sysctl.h"
-#include "driverlib/systick.h"
 #include "driverlib/interrupt.h"
-#include "driverlib/debug.h"
-#include "utils/ustdlib.h"
-#include "adc_hal.h"
 #include "circ_buf_t.h"
-#include "synch.h"
+
+#include "adc_hal.h"
+
 #include "FreeRTOS.h"
-#include "task.h"
 
 #define ADC_BUF_SIZE 10
 

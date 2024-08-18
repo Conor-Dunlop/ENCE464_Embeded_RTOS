@@ -9,9 +9,9 @@
 
 #ifndef BUTTON_MANAGER_H_
 #define BUTTON_MANAGER_H_
+
 #include "step_counter_main.h"
 #include "switches.h"
-
 
 // Init this library
 void btnInit(void);
