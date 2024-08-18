@@ -82,7 +82,7 @@ void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool 
         displayLine("ASSERT ERROR!", 0, ALIGN_CENTRE);
     } else {
 
-        if ((speed * KM_TO_MILES) >= deviceState.runningSpeed) {
+        if ((speed) >= deviceState.runningSpeed) {
             displayLine("RUNNING", 3, ALIGN_CENTRE);
         } else if (speed == 0) {
             displayLine("STOPPED", 3, ALIGN_CENTRE);
@@ -140,7 +140,7 @@ void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool 
                 } else {
                     displayValue("m/step:", "", deviceState.mPerStep * 1000 + 1, 1, ALIGN_CENTRE, true);
                 }
-                displayValue("RunSpeed:", "mph", deviceState.runningSpeed, 2, ALIGN_CENTRE, false);
+                displayValue("RunSpeed:", "kph", deviceState.runningSpeed, 2, ALIGN_CENTRE, false);
         }
     }
 }
