@@ -63,7 +63,6 @@ void displayInit(void)
 // Update the display, called on a loop
 void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool err)
 {
-
     // Check for flash message override
     if (deviceState.flashTicksLeft != 0) {
         char* emptyLine = "                ";
@@ -74,7 +73,7 @@ void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool 
         return;
     }
 
-    uint32_t mTravelled = deviceState.stepsTaken * M_PER_STEP;
+    float mTravelled = deviceState.stepsTaken * deviceState.mPerStep;
 
     float speed = updateSpeed(&SpeedTracker, secondsElapsed, mTravelled) * MS_TO_KMH; 
 
@@ -82,7 +81,8 @@ void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool 
         displayInit();
         displayLine("ASSERT ERROR!", 0, ALIGN_CENTRE);
     } else {
-        if ((speed * KM_TO_MILES) >= 4) {
+
+        if ((speed * KM_TO_MILES) >= deviceState.runningSpeed) {
             displayLine("RUNNING", 3, ALIGN_CENTRE);
         } else if (speed == 0) {
             displayLine("STOPPED", 3, ALIGN_CENTRE);
@@ -118,7 +118,7 @@ void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool 
 
                 // Display the step/distance preview
                 char toDraw[DISPLAY_WIDTH+1]; // Must be one character longer to account for EOFs
-                uint16_t distance = deviceState.newGoal * M_PER_STEP;
+                uint16_t distance = deviceState.newGoal * deviceState.mPerStep;
                 if (deviceState.displayUnits != UNITS_SI) {
                     distance = distance * KM_TO_MILES;
                 }
@@ -133,6 +133,14 @@ void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool 
                 displayLine(toDraw, 1, ALIGN_CENTRE);
 
                 break;
+            case DISPLAY_TRAITS_EDITOR:
+                displayLine("EDIT TRAITS", 0, ALIGN_CENTRE);
+                if (deviceState.mPerStep > 0.8) {
+                    displayValue("m/step:", "", deviceState.mPerStep * 1000, 1, ALIGN_CENTRE, true);
+                } else {
+                    displayValue("m/step:", "", deviceState.mPerStep * 1000 + 1, 1, ALIGN_CENTRE, true);
+                }
+                displayValue("RunSpeed:", "mph", deviceState.runningSpeed, 2, ALIGN_CENTRE, false);
         }
     }
 }

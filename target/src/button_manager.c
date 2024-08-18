@@ -43,28 +43,6 @@ void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
 {
     displayMode_t currentDisplayMode = deviceStateInfo ->displayMode;
 
-    // Changing screens
-    switch (button) {
-        case LEFT:
-            if (checkButton(button) == PUSHED) {
-                deviceStateInfo -> displayMode = (deviceStateInfo -> displayMode + 1) % DISPLAY_NUM_STATES;      //flicker when pressing button
-            }
-            break;
-        case RIGHT: 
-            if (checkButton(button) == PUSHED) {
-                // Can't use mod, as enums behave like an unsigned int, so (0-1)%n != n-1
-                if (deviceStateInfo -> displayMode > 0) {
-                    deviceStateInfo -> displayMode--;
-                } else {
-                    deviceStateInfo -> displayMode = DISPLAY_NUM_STATES-1;
-                }
-            }
-            break;
-        default:
-            break;
-    }
-
-
     // Usage of UP and DOWN buttons
     if (deviceStateInfo -> debugMode) {
         // TEST MODE OPERATION
@@ -83,10 +61,63 @@ void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
                     }
                 }
                 break;
+            case LEFT:
+                if (checkButton(button) == PUSHED) {
+                    deviceStateInfo -> displayMode = (deviceStateInfo -> displayMode + 1) % DISPLAY_NUM_STATES;      //flicker when pressing button
+                }
+                break;
+            case RIGHT: 
+                if (checkButton(button) == PUSHED) {
+                    // Can't use mod, as enums behave like an unsigned int, so (0-1)%n != n-1
+                    if (deviceStateInfo -> displayMode > 0) {
+                        deviceStateInfo -> displayMode--;
+                    } else {
+                        deviceStateInfo -> displayMode = DISPLAY_NUM_STATES-1;
+                    }
+                }
+                break;
             default:
                 break;
         }
-    } else {
+    } else if (deviceStateInfo -> setParamsMode) {
+        // NORMAL OPERATION
+        switch (button) {
+            case UP: // Changing units
+                if (checkButton(button) == PUSHED) {
+                    // Increment m/steps
+                    if (deviceStateInfo -> mPerStep < MAX_M_STEP) {
+                        deviceStateInfo -> mPerStep += M_PER_STEP_INCREMENT;
+                    }
+                }
+                break;
+            case DOWN: // Resetting steps and updating goal with long and short presses
+                if (checkButton(button) == PUSHED) {
+                    // Decrement m/steps
+                    if (deviceStateInfo -> mPerStep > M_PER_STEP_INCREMENT) {
+                        deviceStateInfo -> mPerStep -= M_PER_STEP_INCREMENT;
+                    }
+                }
+                break;
+            case LEFT:
+                if (checkButton(button) == PUSHED) {
+                    // Decrement running speed
+                    if (deviceStateInfo -> runningSpeed > RUN_SPEED_INCREMENT) {
+                        deviceStateInfo -> runningSpeed -= RUN_SPEED_INCREMENT;
+                    }
+                }
+                break;
+            case RIGHT: 
+                if (checkButton(button) == PUSHED) {
+                    // Increment running speed
+                    if (deviceStateInfo -> runningSpeed < MAX_RUN_SPEED) {
+                        deviceStateInfo -> runningSpeed += RUN_SPEED_INCREMENT;
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+    } else if (!(deviceStateInfo -> debugMode) && !(deviceStateInfo -> setParamsMode)) {
         // NORMAL OPERATION
         switch (button) {
             case UP: // Changing units
@@ -110,13 +141,28 @@ void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
                         deviceStateInfo -> currentGoal = deviceStateInfo -> newGoal;
                         deviceStateInfo -> displayMode = DISPLAY_STEPS;
 
-                        allowLongPress = false; // Hacky solution: Protection against double-registering as a short press then a long press
+                        allowLongPress = false;
                     }
                     longPressCount = 0;
                 }
 
                 if (checkButton(button) == RELEASED) {
                     allowLongPress = true;
+                }
+                break;
+            case LEFT:
+                if (checkButton(button) == PUSHED) {
+                    deviceStateInfo -> displayMode = (deviceStateInfo -> displayMode + 1) % DISPLAY_NUM_STATES;      //flicker when pressing button
+                }
+                break;
+            case RIGHT: 
+                if (checkButton(button) == PUSHED) {
+                    // Can't use mod, as enums behave like an unsigned int, so (0-1)%n != n-1
+                    if (deviceStateInfo -> displayMode > 0) {
+                        deviceStateInfo -> displayMode--;
+                    } else {
+                        deviceStateInfo -> displayMode = DISPLAY_NUM_STATES-1;
+                    }
                 }
                 break;
             default:
@@ -132,13 +178,24 @@ void swUpdateState(deviceStateInfo_t* deviceStateInfo, enum SWNames switches)
 {
     switch (switches) {
         case SW1: // Enable/Disable test mode
-            if (isSwitchUp(switches) == UP) {
+            if (isSwitchUp(switches) == SW_UP) {
                 deviceStateInfo -> debugMode = true;
-            } else if (isSwitchUp(switches) == DOWN) {
+            } else if (isSwitchUp(switches) == SW_DOWN) {
                 deviceStateInfo -> debugMode = false;
             }
         case SW2: // Additional functionality TBD
-            break;
+            static bool DISP_LOCK = false;
+            if (isSwitchUp(switches) == SW_UP) {
+                deviceStateInfo -> setParamsMode = true;
+                deviceStateInfo -> displayMode = DISPLAY_TRAITS_EDITOR;
+                DISP_LOCK = false;
+            } else if (isSwitchUp(switches) == SW_DOWN) {
+                deviceStateInfo -> setParamsMode = false;
+                if (!DISP_LOCK) {
+                    deviceStateInfo -> displayMode = DISPLAY_STEPS;
+                    DISP_LOCK = true;
+                }
+            }
         default:
             break;
     }
