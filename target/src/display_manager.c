@@ -1,12 +1,14 @@
 /*
  * display_manager.c
  *
- * Handles drawing to the device's screen, given its current state
- *
  *  Created on: 23/03/2022
- *      Author: Matthew Suter
+ *      Authors: Matthew Suter
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood, Brennan Drach, Conor Dunlop
  *
- *  FitnessThur9-1
+ *  Handles drawing to the device's screen, given its current state
+ *
  */
 
 #include "display_manager.h"
@@ -52,15 +54,18 @@ void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool 
         return;
     }
 
+    // Calculate meters travelled
     float mTravelled = deviceState.stepsTaken * deviceState.mPerStep;
 
+    // Update speed and convert to kph
     float speed = updateSpeed(&SpeedTracker, secondsElapsed, mTravelled) * MS_TO_KMH; 
 
-    if (err) {
+    if (err) { // If assert error is detected
         displayInit();
         displayLine("ASSERT ERROR!", 0, ALIGN_CENTRE);
     } else {
-
+        
+        // Display whether user is stopped, walking or running
         if ((speed) >= deviceState.runningSpeed) {
             displayLine("RUNNING", 3, ALIGN_CENTRE);
         } else if (speed == 0) {
@@ -68,7 +73,8 @@ void displayUpdate(deviceStateInfo_t deviceState, uint16_t secondsElapsed, bool 
         } else {
             displayLine("WALKING", 3, ALIGN_CENTRE);
         }
-        
+
+        // Display different Fitness Monitor information depending on displayMode
         switch (deviceState.displayMode) {
             case DISPLAY_STEPS:
                 displayLine("", 0, ALIGN_CENTRE); // Clear the top line

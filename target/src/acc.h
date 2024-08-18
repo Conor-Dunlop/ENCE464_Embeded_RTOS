@@ -1,17 +1,16 @@
-#ifndef ACC_H_
-#define ACC_H_
-
-/*******************************************************
- *
+/*
  * acc.h
  *
- * Support for interfacing with the ADXL345 accelerometer
- * on the Orbit BoosterPack.
+ *  Last Modified: 24/02/2020
+ *      Authors: C.P. Moore
+ * 
+ *  Support for interfacing with the ADXL345 accelerometer
+ *  on the Orbit BoosterPack.
  *
- * C.P. Moore
- * Last modified:  24/02/2020
- *
-*******************************************************/
+ */
+
+#ifndef ACC_H_
+#define ACC_H_
 
 /*
  * Accl Interrupt Pins

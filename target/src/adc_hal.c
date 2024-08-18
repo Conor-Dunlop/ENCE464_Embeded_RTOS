@@ -1,10 +1,13 @@
-//*****************************************************************************
-//
-// adc_hal.c - Abstraction file to stand between ADC_read and the tivaware functions
-//              and pass values between them
-// Author:  Conor Dunlop
-//
-//*****************************************************************************
+/*
+ * adc_hal.c
+ *
+ *  Last Modified: 22/08/2024
+ *      Authors: Conor Dunlop
+ *
+ *  Abstraction file to stand between ADC_read and the tivaware functions
+ *  and pass values between them
+ *
+ */
 
 #include <stdint.h>
 #include <stdbool.h>

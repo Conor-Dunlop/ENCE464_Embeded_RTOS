@@ -1,19 +1,18 @@
-/**********************************************************
+/*
+ *  i2c_driver.c
  *
- * i2c_driver.c
+ *  Created on: 11/02/2020
+ *      Authors: C. P. Moore
  *
- * Helper functions used to communicate with peripherals
- * on the Orbit BoosterPack via I2C.
+ *  Helper functions used to communicate with peripherals
+ *  on the Orbit BoosterPack via I2C.
  *
- * Functions excerpted from Digilent's Orbit Booster full
- * demo, available from
- * https://reference.digilentinc.com
- * /orbit_boosterpack/orbit_boosterpack
+ *  Functions excerpted from Digilent's Orbit Booster full
+ *  demo, available from
+ *  https://reference.digilentinc.com
+ *  /orbit_boosterpack/orbit_boosterpack
  *
- * C. P. Moore
- * 11 Feb 2020
- *
- **********************************************************/
+ */
 
 #include "i2c_driver.h"
 

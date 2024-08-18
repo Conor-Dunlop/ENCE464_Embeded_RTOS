@@ -1,3 +1,14 @@
+/*
+ * ADC_read.h - Based on 'ADCdemo1.h'
+ *
+ *  Created on: 08/02/2018
+ *      Authors: P.J. Bones	UCECE
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood, Brennan Drach, Conor Dunlop
+ *
+ */
+
 #ifndef ADC_READ_H_
 #define ADC_READ_H_
 

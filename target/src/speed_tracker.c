@@ -1,3 +1,13 @@
+/*
+ *  speed_tracker.c
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood
+ *
+ *  Real-time speed tracker
+ *
+ */
+
 #include "speed_tracker.h"
 
 SpeedTracker_t SpeedTracker;

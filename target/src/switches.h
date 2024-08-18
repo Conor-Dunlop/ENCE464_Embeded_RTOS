@@ -1,13 +1,18 @@
+/*
+ * switches.h - Based on the structure of buttons4.h by P.J Bones
+ *
+ *  Created on: 21/04/2022
+ *      Authors: Daniel Rabbidge
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood
+ *
+ *  Module to read values from the Orbit Board toggle switches
+ *
+ */
+
 #ifndef SWITCHES_H_
 #define SWITCHES_H_
-
-// *******************************************************
-// Header file for switch reading module
-// Daniel Rabbidge
-//
-// FitnessThur9-1
-//
-// *******************************************************
 
 #include <stdint.h>
 #include <stdbool.h>

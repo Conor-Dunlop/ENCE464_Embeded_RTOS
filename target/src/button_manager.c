@@ -1,12 +1,14 @@
 /*
- * Button_management.c
- *
- * Modifies the device's state according to the user's button and switch input
+ * button_manager.c
  *
  *  Created on: 31/03/2022
- *      Author: Daniel Rabbidge
+ *      Authors: Daniel Rabbidge
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood, Brennan Drach, Conor Dunlop
  *
- *  FitnessThur9-1
+ *  Modifies the device's state according to the user's button and switch input
+ *
  */
 
 #include <stdint.h>
@@ -78,7 +80,7 @@ void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
                 break;
         }
     } else if (deviceStateInfo -> setParamsMode) {
-        // NORMAL OPERATION
+        // SET PARAMETERS MODE OPERATION
         switch (button) {
             case UP: // Changing units
                 if (checkButton(button) == PUSHED) {
@@ -175,13 +177,13 @@ void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
 void swUpdateState(deviceStateInfo_t* deviceStateInfo, enum SWNames switches)
 {
     switch (switches) {
-        case SW1: // Enable/Disable test mode
+        case SW1: // Enable/Disable debug mode
             if (isSwitchUp(switches) == SW_UP) {
                 deviceStateInfo -> debugMode = true;
             } else if (isSwitchUp(switches) == SW_DOWN) {
                 deviceStateInfo -> debugMode = false;
             }
-        case SW2: // Additional functionality TBD
+        case SW2: // Enable/Disable set parameters mode
             static bool DISP_LOCK = false;
             if (isSwitchUp(switches) == SW_UP) {
                 deviceStateInfo -> setParamsMode = true;

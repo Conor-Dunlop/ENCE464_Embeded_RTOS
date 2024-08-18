@@ -1,15 +1,13 @@
-// *******************************************************
-// 
-// circ_buf_v.c
-//
-// Support for a circular buffer of vector3 (3*int16_t) values on the
-//  Tiva processor.
-// P.J. Bones UCECE, Tim Preston-Marshall
-// Last modified:  3.5.2022
-// 
-// FitnessThur9-1
-//
-// *******************************************************
+/*
+ * circ_buf_v.c
+ *
+ *  Created on: 03/05/2022
+ *      Authors: P.J. Bones UCECE, Tim Preston-Marshall
+ *
+ *  Support for a circular buffer of vector3 (3*int16_t) values on the
+ *  Tiva processor.
+ *
+ */
 
 #include "circ_buf_v.h"
 
