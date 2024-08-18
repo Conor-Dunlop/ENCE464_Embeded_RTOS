@@ -15,6 +15,7 @@
 
 // Define handles
 SemaphoreHandle_t xADCSemaphore; // ADC signalling semaphore
+SemaphoreHandle_t xResetSemaphore; // Reset step count signalling semaphore
 SemaphoreHandle_t xPromptSemaphore; // Move Prompt signalling semaphore
 SemaphoreHandle_t xDeviceStateMutex; // deviceState shared resource protection
 QueueHandle_t accl_q; // Accelerometer data queue
@@ -23,6 +24,7 @@ TimerHandle_t xMoveTimer; // 'Move prompt' timer
 // Create semaphores, mutexes, and queues
 void createSemaphores(void) {
     xADCSemaphore = xSemaphoreCreateBinary();
+    xResetSemaphore = xSemaphoreCreateBinary();
     xPromptSemaphore = xSemaphoreCreateBinary();
     xDeviceStateMutex = xSemaphoreCreateMutex();
     accl_q = xQueueCreate(1, BUF_SIZE);

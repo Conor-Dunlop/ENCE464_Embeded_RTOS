@@ -21,6 +21,7 @@
 
 // Declare externally observable handles
 extern SemaphoreHandle_t xADCSemaphore;
+extern SemaphoreHandle_t xResetSemaphore;
 extern SemaphoreHandle_t xPromptSemaphore;
 extern SemaphoreHandle_t xDeviceStateMutex;
 extern QueueHandle_t accl_q;

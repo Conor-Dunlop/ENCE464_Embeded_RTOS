@@ -41,6 +41,7 @@
 #define POT_HZ 50
 #define RATE_ACCL_HZ 200
 #define RATE_BLINK_HZ 10
+#define RATE_RESET_HZ 10
 #define RATE_DISPLAY_UPDATE_HZ 5
 #define FLASH_MESSAGE_TIME 3/2 // seconds
 
@@ -79,6 +80,7 @@ const TickType_t xIOFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
 const TickType_t xPotFrequency = pdMS_TO_TICKS(1000 / POT_HZ);
 const TickType_t xDispFrequency = pdMS_TO_TICKS(1000 / RATE_DISPLAY_UPDATE_HZ);
 const TickType_t xBlinkFrequency = pdMS_TO_TICKS(1000 / RATE_BLINK_HZ);
+const TickType_t xResetFrequency = pdMS_TO_TICKS(1000 / RATE_RESET_HZ);
 
 #ifdef SERIAL_PLOTTING_ENABLED
 const TickType_t xSerialFrequency = pdMS_TO_TICKS(1000 / RATE_SERIAL_PLOT_HZ);
@@ -90,6 +92,7 @@ unsigned long lastPotProcess = 0;
 unsigned long lastAcclProcess = 0;
 unsigned long lastDisplayProcess = 0;
 unsigned long lastBlinkProcess = 0;
+unsigned long lastResetProcess = 0;
 
 volatile bool timerResetAfterExpiry = false;  // Flag to check if the timer was reset after expiry
 
@@ -158,8 +161,28 @@ void initLED (void)
  * FreeRTOS System Tasks
  ***********************************************************/
 
+// Check for RESET
+static void check_reset(void* args)
+{
+    static TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+
+    for (;;) {
+        // Delay task
+        vTaskDelayUntil(&xLastWakeTime, xResetFrequency);
+
+        lastResetProcess = xLastWakeTime;
+
+        if (xSemaphoreTake(xResetSemaphore, 0) == pdTRUE) {
+            flashMessage("Reset!");
+        }  
+    }
+} 
+
+
+
 // Blink Red LED
-void blink(void* args) 
+static void blink(void* args) 
 {
     static TickType_t xLastWakeTime;
     xLastWakeTime = xTaskGetTickCount();
@@ -421,7 +444,9 @@ int main(void)
     #endif // SERIAL_PLOTTING_ENABLED
 
     // Create tasks
-    xTaskCreate(&blink, "blink", 128, NULL, 1, NULL);
+    xTaskCreate(check_reset, "CheckToReset", 128, NULL, 2, NULL);
+
+    xTaskCreate(blink, "blink", 128, NULL, 1, NULL);
 
     xTaskCreate(write_to_display, "WriteToDisplay", 256, NULL, 2, NULL);
 

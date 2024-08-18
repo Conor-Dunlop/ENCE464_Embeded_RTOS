@@ -15,6 +15,8 @@
 #include <stdbool.h>
 #include "buttons4.h"
 #include "button_manager.h"
+#include "FreeRTOS.h"
+#include "synch.h"
 
 
 //********************************************************
@@ -134,7 +136,7 @@ void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
                     longPressCount++;
                     if (longPressCount >= LONG_PRESS_CYCLES) {
                         deviceStateInfo -> stepsTaken = 0;
-                        flashMessage("Reset!");
+                        xSemaphoreGive(xResetSemaphore);
                     }
                 } else {
                     if ((currentDisplayMode == DISPLAY_SET_GOAL) && checkButton(button) == PUSHED) {
