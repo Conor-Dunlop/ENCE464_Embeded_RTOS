@@ -154,7 +154,7 @@ void initClock (void)
 
 void initTimer (void)
 {
-    // Create timers
+    // Create 'prompt to move' timer
     const TickType_t xTimerPeriod = pdMS_TO_TICKS(5000);
 
     xMoveTimer = xTimerCreate("MovementTimer", // Name of the timer
@@ -162,12 +162,13 @@ void initTimer (void)
                             pdFALSE,            // Auto-reload (pdFALSE for single-shot)
                             (void*)0,          // Timer ID (not used here)
                             vTimerCallback);   // Callback function
-    
+     
     xTimerStart(xMoveTimer, 0);
 }
 
 void initLED (void)
-{
+{   
+    // Initialise RED LED GPIO output
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1);
 }
@@ -209,7 +210,7 @@ static void poll_butt_and_switch(void *arg)
             btnUpdateState(&deviceState, button);
         }
 
-        for (enum SWNames switches = 0; switches< NUM_SW; switches++) {
+        for (enum SWNames switches = 0; switches < NUM_SW; switches++) {
             swUpdateState(&deviceState, switches);
         }
     }
@@ -395,7 +396,10 @@ int main(void)
     deviceState.displayMode = DISPLAY_STEPS;
     deviceState.stepsTaken = 0;
     deviceState.currentGoal = TARGET_DISTANCE_DEFAULT;
+    deviceState.mPerStep = M_PER_STEP_DEFAULT;
+    deviceState.runningSpeed = RUN_SPEED_DEFAULT;
     deviceState.debugMode = false;
+    deviceState.setParamsMode = false;
     deviceState.workoutBegun = false;
     deviceState.displayUnits= UNITS_SI;
     deviceState.workoutStartTick = 0;
