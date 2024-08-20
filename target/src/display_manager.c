@@ -37,6 +37,7 @@ static void displayTime(char* prefix, uint16_t time, uint8_t row, textAlignment_
 void displayInit(void)
 {
     OLEDInitialise();
+    initSpeedTracker(&SpeedTracker);
 }
 
 

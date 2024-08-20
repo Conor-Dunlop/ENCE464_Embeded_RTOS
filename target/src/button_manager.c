@@ -43,6 +43,9 @@ void btnInit(void)
 //********************************************************
 void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
 {
+    // Update button state
+    updateButtons();
+
     displayMode_t currentDisplayMode = deviceStateInfo ->displayMode;
 
     // Usage of UP and DOWN buttons
@@ -178,6 +181,8 @@ void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
 //********************************************************
 void swUpdateState(deviceStateInfo_t* deviceStateInfo, enum SWNames switches)
 {
+    updateSwitch();
+    
     switch (switches) {
         case SW1: // Enable/Disable debug mode
             if (isSwitchUp(switches) == SW_UP) {

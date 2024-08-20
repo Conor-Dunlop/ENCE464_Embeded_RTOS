@@ -37,7 +37,7 @@
  * Constants and types
  **********************************************************/
 #define RATE_SYSTICK_HZ 250
-#define RATE_IO_HZ 75
+#define RATE_IO_HZ 150
 #define POT_HZ 50
 #define RATE_ACCL_HZ 200
 #define RATE_BLINK_HZ 10
@@ -211,10 +211,6 @@ static void poll_butt_and_switch(void *arg)
         vTaskDelayUntil(&xLastWakeTime, xIOFrequency);
 
         lastIoProcess = xLastWakeTime;
-
-        // Update buttons and switches
-        updateButtons();
-        updateSwitch();
 
         // Update deviceState depending on button states
         for (enum butNames button = 0; button < NUM_BUTS; button++) {
@@ -434,10 +430,8 @@ int main(void)
     btnInit();
     acclInit();
     initADC();
-    initButtons();
     initTimer();
     initLED();
-    initSpeedTracker(&SpeedTracker);
 
     #ifdef SERIAL_PLOTTING_ENABLED
     SerialInit ();
