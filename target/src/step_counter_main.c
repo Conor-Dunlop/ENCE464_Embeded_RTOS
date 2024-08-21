@@ -46,7 +46,7 @@
 #define FLASH_MESSAGE_TIME 3/2 // seconds
 
 #ifdef SERIAL_PLOTTING_ENABLED
-#define RATE_SERIAL_PLOT_HZ 100
+#define RATE_SERIAL_PLOT_HZ 2
 #endif // SERIAL_PLOTTING_ENABLED
 
 #define MOVE_PROMPT_PERIOD 5000 // 5 seconds
@@ -354,7 +354,7 @@ static void write_to_display(void* args) {
 static void send_USB_via_serial(void* args) {
     static TickType_t xLastWakeTime;
     // vector3_t mean;
-    uint16_t combined;
+    uint16_t combined = 0;
 
     xLastWakeTime = xTaskGetTickCount ();
 
@@ -363,9 +363,8 @@ static void send_USB_via_serial(void* args) {
         xTaskDelayUntil(&xLastWakeTime, xSerialFrequency);
 
         lastSerialProcess = xLastWakeTime;
-        if (xQueueReceive(accl_q, &combined, 0) == pdPASS) {
-            SerialPlot(deviceState.stepsTaken, deviceState.currentGoal, deviceState.runningSpeed, combined);
-        }
+        
+        SerialPlot(deviceState.stepsTaken, deviceState.currentGoal, deviceState.runningSpeed, combined);
     }
 }
 #endif // SERIAL_PLOTTING_ENABLED
