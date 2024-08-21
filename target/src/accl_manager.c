@@ -69,7 +69,7 @@ void acclProcess(void)
 
     uint16_t combined = acclMean();
 
-    if (abs(old_combined - combined) > 5) // Compare current and previous values to reduce motion sensitivity
+    if (abs(old_combined - combined) > ACCL_SENSITIVITY) // Compare current and previous values to reduce sensitivity
     {
         // Send data to be processed in main
         xQueueSend(accl_q, &combined, portMAX_DELAY);
