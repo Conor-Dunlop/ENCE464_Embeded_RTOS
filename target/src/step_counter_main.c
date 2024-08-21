@@ -12,7 +12,7 @@
  */
 
 // Comment this out to disable serial plotting
-// #define SERIAL_PLOTTING_ENABLED
+#define SERIAL_PLOTTING_ENABLED
 
 
 #include <stdint.h>
@@ -49,6 +49,8 @@
 #define RATE_SERIAL_PLOT_HZ 100
 #endif // SERIAL_PLOTTING_ENABLED
 
+#define MOVE_PROMPT_PERIOD 5000 // 5 seconds
+#define DEVICE_MUTEX_DELAY pdMS_TO_TICKS(100)
 
 #define STEP_GOAL_ROUNDING 100
 #define STEP_THRESHOLD_HIGH 270
@@ -57,16 +59,6 @@
 #define TARGET_DISTANCE_DEFAULT 1000
 
 #define POT_SCALE_COEFF 20000/4095 // in steps, adjusting to account for the potentiometer's maximum possible reading
-
-/*******************************************
- *      Local prototypes
- *******************************************/
-void SysTickIntHandler (void);
-void initClock (void);
-void initSysTick (void);
-void initDisplay (void);
-void initAccl (void);
-vector3_t getAcclData (void);
 
 
 /*******************************************
@@ -94,6 +86,10 @@ unsigned long lastDisplayProcess = 0;
 unsigned long lastBlinkProcess = 0;
 unsigned long lastResetProcess = 0;
 
+#ifdef SERIAL_PLOTTING_ENABLED
+unsigned long lastSerialProcess = 0;
+#endif // SERIAL_PLOTTING_ENABLED
+
 volatile bool timerResetAfterExpiry = false;  // Flag to check if the timer was reset after expiry
 
 
@@ -101,9 +97,9 @@ volatile bool timerResetAfterExpiry = false;  // Flag to check if the timer was 
  * Helper functions
  ***********************************************************/
 // Flash a message onto the screen, overriding everything else
-void flashMessage(char* toShow)
+void flash_message(char* toShow)
 {
-    if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+    if (xSemaphoreTake(xDeviceStateMutex, DEVICE_MUTEX_DELAY) == pdTRUE) {
         deviceState.flashTicksLeft = RATE_DISPLAY_UPDATE_HZ * FLASH_MESSAGE_TIME;
 
         uint8_t i = 0;
@@ -128,17 +124,17 @@ void vTimerCallback(TimerHandle_t xTimer) {
 /***********************************************************
  * Initialisation functions
  ***********************************************************/
-void initClock (void)
+void init_clock (void)
 {
     // Set the clock rate to 80 MHz
     SysCtlClockSet (SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
                    SYSCTL_XTAL_16MHZ);
 }
 
-void initTimer (void)
+void init_timer (void)
 {
     // Initialise 'prompt to move' timer
-    const TickType_t xTimerPeriod = pdMS_TO_TICKS(5000);
+    const TickType_t xTimerPeriod = pdMS_TO_TICKS(MOVE_PROMPT_PERIOD);
 
     xMoveTimer = xTimerCreate("MovementTimer", // Name of the timer
                             xTimerPeriod,      // Period of the timer
@@ -149,13 +145,30 @@ void initTimer (void)
     xTimerStart(xMoveTimer, 0);
 }
 
-void initLED (void)
+void init_LED (void)
 {   
     // Initialise red LED GPIO peripheral
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1);
 }
 
+void initDevice (void)
+{
+    // Device state
+    // Omnibus struct that holds loads of info about the device's current state, so it can be updated from any function
+    deviceState.displayMode = DISPLAY_STEPS;
+    deviceState.stepsTaken = 0;
+    deviceState.currentGoal = TARGET_DISTANCE_DEFAULT;
+    deviceState.mPerStep = M_PER_STEP_DEFAULT;
+    deviceState.runningSpeed = RUN_SPEED_DEFAULT;
+    deviceState.debugMode = false;
+    deviceState.setParamsMode = false;
+    deviceState.workoutBegun = false;
+    deviceState.displayUnits= UNITS_SI;
+    deviceState.workoutStartTick = 0;
+    deviceState.flashTicksLeft = 0;
+    deviceState.flashMessage = calloc(MAX_STR_LEN + 1, sizeof(char));
+}
 
 /***********************************************************
  * FreeRTOS System Tasks
@@ -174,12 +187,10 @@ static void check_reset(void* args)
         lastResetProcess = xLastWakeTime;
 
         if (xSemaphoreTake(xResetSemaphore, 0) == pdTRUE) {
-            flashMessage("Reset!");
+            flash_message("Reset!");
         }  
     }
 } 
-
-
 
 // Blink Red LED
 static void blink(void* args) 
@@ -225,7 +236,7 @@ static void poll_butt_and_switch(void *arg)
 }
 
 // Update newGoal based on potentiometer state
-static void update_newGoal(void* args) 
+static void update_new_goal(void* args) 
 {
     static TickType_t xLastWakeTime;
     xLastWakeTime = xTaskGetTickCount ();
@@ -238,7 +249,7 @@ static void update_newGoal(void* args)
 
         pollADC();
 
-        if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+        if (xSemaphoreTake(xDeviceStateMutex, DEVICE_MUTEX_DELAY) == pdTRUE) {
             // Check for the signal from the ADC ISR
             if (xSemaphoreTake(xADCSemaphore, 0) == pdTRUE) {
                 deviceState.newGoal = readADC() * POT_SCALE_COEFF; // Set the new goal value, scaling to give the desired range
@@ -273,7 +284,7 @@ static void read_process_accl(void* args)
         if (xQueueReceive(accl_q, &combined, 0) == pdPASS) {
             if (combined >= STEP_THRESHOLD_HIGH && stepHigh == false) {
                 stepHigh = true;
-                if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+                if (xSemaphoreTake(xDeviceStateMutex, DEVICE_MUTEX_DELAY) == pdTRUE) {
                     // Access and modify deviceState
                     deviceState.stepsTaken++;
                     // Release mutex
@@ -281,7 +292,7 @@ static void read_process_accl(void* args)
                 }
                 // flash a message if the user has reached their goal
                 if (deviceState.stepsTaken == deviceState.currentGoal && deviceState.flashTicksLeft == 0) {
-                    flashMessage("Goal reached!");
+                    flash_message("Goal reached!");
                 }
 
             } else if (combined <= STEP_THRESHOLD_LOW) {
@@ -289,14 +300,14 @@ static void read_process_accl(void* args)
             }
             // Don't start the workout until the user begins walking
             if (deviceState.stepsTaken != 0) {
-                if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+                if (xSemaphoreTake(xDeviceStateMutex, DEVICE_MUTEX_DELAY) == pdTRUE) {
                     // Access and modify deviceState
                     deviceState.workoutBegun = true;
                     // Release mutex
                     xSemaphoreGive(xDeviceStateMutex);
                 }
             } else {
-                if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+                if (xSemaphoreTake(xDeviceStateMutex, DEVICE_MUTEX_DELAY) == pdTRUE) {
                     // Access and modify deviceState
                     deviceState.workoutStartTick = xLastWakeTime;
                     // Release mutex
@@ -320,7 +331,7 @@ static void write_to_display(void* args) {
         lastDisplayProcess = xLastWakeTime;
 
         if (deviceState.flashTicksLeft > 0) {
-            if (xSemaphoreTake(xDeviceStateMutex, 0) == pdTRUE) {
+            if (xSemaphoreTake(xDeviceStateMutex, DEVICE_MUTEX_DELAY) == pdTRUE) {
                 // Access and modify deviceState
                 deviceState.flashTicksLeft--;
                 // Release mutex
@@ -341,18 +352,20 @@ static void write_to_display(void* args) {
 // Send to USB via serial
 #ifdef SERIAL_PLOTTING_ENABLED
 static void send_USB_via_serial(void* args) {
-
     static TickType_t xLastWakeTime;
-    uint16_t secondsElapsed;
-    vector3_t mean;
+    // vector3_t mean;
+    uint16_t combined;
+
+    xLastWakeTime = xTaskGetTickCount ();
 
     for (;;) {
 
         xTaskDelayUntil(&xLastWakeTime, xSerialFrequency);
 
         lastSerialProcess = xLastWakeTime;
-
-        SerialPlot(deviceState.stepsTaken, mean.x, mean.y, mean.z);
+        if (xQueueReceive(accl_q, &combined, 0) == pdPASS) {
+            SerialPlot(deviceState.stepsTaken, deviceState.currentGoal, deviceState.runningSpeed, combined);
+        }
     }
 }
 #endif // SERIAL_PLOTTING_ENABLED
@@ -364,7 +377,7 @@ static void send_USB_via_serial(void* args) {
 static void left_running_protection(void* args) 
 {
     static TickType_t xLastWakeTime;
-    while(1)
+    for (;;)
     {
         xLastWakeTime = xTaskGetTickCount ();
 
@@ -402,62 +415,45 @@ static void left_running_protection(void* args)
 
 int main(void)
 {
-    #ifdef SERIAL_PLOTTING_ENABLED
-    unsigned long lastSerialProcess = 0;
-    #endif // SERIAL_PLOTTING_ENABLED
-
-    // Device state
-    // Omnibus struct that holds loads of info about the device's current state, so it can be updated from any function
-    deviceState.displayMode = DISPLAY_STEPS;
-    deviceState.stepsTaken = 0;
-    deviceState.currentGoal = TARGET_DISTANCE_DEFAULT;
-    deviceState.mPerStep = M_PER_STEP_DEFAULT;
-    deviceState.runningSpeed = RUN_SPEED_DEFAULT;
-    deviceState.debugMode = false;
-    deviceState.setParamsMode = false;
-    deviceState.workoutBegun = false;
-    deviceState.displayUnits= UNITS_SI;
-    deviceState.workoutStartTick = 0;
-    deviceState.flashTicksLeft = 0;
-    deviceState.flashMessage = calloc(MAX_STR_LEN + 1, sizeof(char));
-
-    // Create mutexes and semaphores
-    createSemaphores();
-
-    // Init libs
-    initClock();
+    // Initialisation
+    init_clock();
     displayInit();
     btnInit();
     acclInit();
     initADC();
-    initTimer();
-    initLED();
+    init_timer();
+    init_LED();
+    initDevice();
 
     #ifdef SERIAL_PLOTTING_ENABLED
     SerialInit ();
     #endif // SERIAL_PLOTTING_ENABLED
 
+    // Create mutexes and semaphores
+    createSemaphores();
+
     // Create tasks
-    xTaskCreate(check_reset, "CheckToReset", 128, NULL, 2, NULL);
+    xTaskCreate(check_reset, "CheckToReset", 32, NULL, 2, NULL);
 
-    xTaskCreate(blink, "blink", 128, NULL, 1, NULL);
+    xTaskCreate(blink, "Blink", 16, NULL, 3, NULL);
 
-    xTaskCreate(write_to_display, "WriteToDisplay", 256, NULL, 2, NULL);
+    xTaskCreate(write_to_display, "WriteToDisplay", 128, NULL, 1, NULL);
 
-    xTaskCreate(update_newGoal, "UpdateNewGoal", 256, NULL, 1, NULL);
+    xTaskCreate(update_new_goal, "UpdateNewGoal", 64, NULL, 2, NULL);
 
-    xTaskCreate(poll_butt_and_switch, "PollButtAndSW", 256, NULL, 1, NULL);
+    xTaskCreate(poll_butt_and_switch, "PollButtAndSW", 64, NULL, 2, NULL);
 
-    xTaskCreate(read_process_accl, "ReadProcessAccl", 256, NULL, 1, NULL);
+    xTaskCreate(read_process_accl, "ReadProcessAccl", 128, NULL, 1, NULL);
+
+    xTaskCreate(left_running_protection, "TicksProtection", 32, NULL, 1, NULL);
 
     #ifdef SERIAL_PLOTTING_ENABLED
-    xTaskCreate(send_USB_via_serial, "USBViaSerial", 256, NULL, 1, NULL);
+    xTaskCreate(send_USB_via_serial, "USBViaSerial", 64, NULL, 3, NULL);
     #endif // SERIAL_PLOTTING_ENABLED
-
-    xTaskCreate(left_running_protection, "TicksProtection", 256, NULL, 1, NULL);
-
+ 
     // Start the scheduler
     vTaskStartScheduler();
+
     return 0; // Should never reach here
 }
 
@@ -469,5 +465,5 @@ void vAssertCalled( const char * pcFile, unsigned long ulLine ) {
 
     displayUpdate(deviceState, 0, true); // Display ASSERT ERROR
 
-    while (true); // Safe
+    while (true); // Safe state
 }
