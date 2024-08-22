@@ -4,7 +4,11 @@
  *  Created on: 10/04/2022
  *      Author: Matthew Suter, Tim Preston-Marshall, Daniel Rabbidge
  *
- *  FitnessThur9-1
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood, Brennan Drach, Conor Dunlop
+ *
+ *  Main header file for the ENCE464 Fitness Monitor v2 project
+ *
  */
 
 #ifndef STEP_COUNTER_MAIN_H_
@@ -47,7 +51,7 @@ typedef struct {
     uint32_t newGoal;           // Value from the potentiometer, processed to give a new goal
     float mPerStep;
     float runningSpeed;
-    bool debugMode;             // Is enable/disable debug functionality
+    bool debugMode;             // Enable/disable debug functionality
     bool setParamsMode;
     displayMode_t displayMode;
     displayUnits_t displayUnits;

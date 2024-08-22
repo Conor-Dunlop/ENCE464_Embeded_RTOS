@@ -15,7 +15,6 @@
 #include <stdbool.h>
 #include "buttons4.h"
 #include "button_manager.h"
-#include "FreeRTOS.h"
 #include "synch.h"
 
 
@@ -182,7 +181,7 @@ void btnUpdateState(deviceStateInfo_t* deviceStateInfo, enum butNames button)
 void swUpdateState(deviceStateInfo_t* deviceStateInfo, enum SWNames switches)
 {
     updateSwitch();
-    
+
     switch (switches) {
         case SW1: // Enable/Disable debug mode
             if (isSwitchUp(switches) == SW_UP) {
@@ -207,5 +206,3 @@ void swUpdateState(deviceStateInfo_t* deviceStateInfo, enum SWNames switches)
             break;
     }
 }
-
-
