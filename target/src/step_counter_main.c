@@ -36,7 +36,7 @@
 /**********************************************************
  * Constants and types
  **********************************************************/
-#define RATE_SYSTICK_HZ 250
+#define RATE_SYSTICK_HZ 250 /4
 #define RATE_IO_HZ 150
 #define POT_HZ 50
 #define RATE_ACCL_HZ 200
@@ -66,6 +66,9 @@
  *******************************************/
 deviceStateInfo_t deviceState; // Stored as one global so it can be accessed by other helper libs within this main module
 
+/*******************************************
+ *      Locals
+ *******************************************/
 // Converted frequencies for vTaskDelayUntil
 const TickType_t xAcclFrequency = pdMS_TO_TICKS(1000 / RATE_ACCL_HZ);
 const TickType_t xIOFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
@@ -223,14 +226,18 @@ static void poll_butt_and_switch(void *arg)
 
         lastIoProcess = xLastWakeTime;
 
-        // Update deviceState depending on button states
-        for (enum butNames button = 0; button < NUM_BUTS; button++) {
-            btnUpdateState(&deviceState, button);
-        }
+        if (xSemaphoreTake(xDeviceStateMutex, DEVICE_MUTEX_DELAY) == pdTRUE) {
+            // Update deviceState depending on button states
+            for (enum butNames button = 0; button < NUM_BUTS; button++) {
+                btnUpdateState(&deviceState, button);
+            }
 
-        // Update deviceState depending on switch states
-        for (enum SWNames switches = 0; switches < NUM_SW; switches++) {
-            swUpdateState(&deviceState, switches);
+            // Update deviceState depending on switch states
+            for (enum SWNames switches = 0; switches < NUM_SW; switches++) {
+                swUpdateState(&deviceState, switches);
+            }
+
+            xSemaphoreGive(xDeviceStateMutex);
         }
     }
 }
@@ -340,7 +347,7 @@ static void write_to_display(void* args) {
         }
 
         if (deviceState.workoutBegun) {
-            secondsElapsed = (xLastWakeTime - deviceState.workoutStartTick)/RATE_SYSTICK_HZ/4;
+            secondsElapsed = (xLastWakeTime - deviceState.workoutStartTick)/RATE_SYSTICK_HZ;
         } else {
             secondsElapsed = 0;
         }

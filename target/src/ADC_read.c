@@ -24,7 +24,7 @@
 #define ADC_BUF_ID 3
 
 //*****************************************************************************
-// Global variables
+// Local variables
 //*****************************************************************************
 
 static circBuf_t* ADC_inBuffer;		// Buffer of size BUF_SIZE integers (sample values)
@@ -84,7 +84,7 @@ void initADC (void)
     adc_hal_register (ADC_BUF_ID, callback);
 }
 
-uint32_t readADC() 
+uint32_t readADC(void) 
 {    
       uint32_t sum = 0;
       uint16_t i = 0;

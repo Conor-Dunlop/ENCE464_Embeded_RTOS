@@ -43,6 +43,8 @@ static circ_buf_vec_t* acclBuffer;
  *******************************************/
 void initAcclChip(void);
 vector3_t getAcclData(void);
+uint16_t acclMean(void);
+
 
 
 

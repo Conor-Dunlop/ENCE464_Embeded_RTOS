@@ -14,7 +14,6 @@
 
 void acclInit(void);        // set up library
 void acclProcess(void);     // Run periodically
-uint16_t acclMean(void);   // Return mean acceleration, calculated using circular buffers
 
 
 #endif /* ACCL_MANAGER_H_ */
