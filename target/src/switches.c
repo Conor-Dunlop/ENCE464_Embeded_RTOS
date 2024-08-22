@@ -1,20 +1,16 @@
 /*
- * Module to read values from the Orbit Board toggle switches
- * Created 21/4/22
- * Author: Daniel Rabbidge
- * Based on the structure of buttons4.c by P.J Bones
+ * switches.c - Based on the structure of buttons4.c by P.J Bones
  *
- * FitnessThur9-1
+ *  Created on: 21/04/2022
+ *      Authors: Daniel Rabbidge
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood
+ *
+ *  Module to read values from the Orbit Board toggle switches
+ *
  */
 
-#include <stdint.h>
-#include <stdbool.h>
-#include "inc/hw_memmap.h"
-#include "inc/hw_types.h"
-#include "driverlib/gpio.h"
-#include "driverlib/sysctl.h"
-#include "driverlib/debug.h"
-#include "inc/tm4c123gh6pm.h"  // Board specific defines (for PF0)
 #include "switches.h"
 
 

@@ -1,16 +1,21 @@
+/*
+ *  i2c_driver.h
+ *
+ *  Created on: 24/02/2020
+ *      Authors: C. P. Moore
+ *
+ *  Support for I2C helper functions on Tiva board.
+ *
+ */
+
 #ifndef I2C_DRIVER_H_
 #define I2C_DRIVER_H_
 
-/*******************************************************
- *
- * i2c_driver.h
- *
- * Support for I2C helper functions on Tiva board.
- *
- * C.P. Moore
- * Last modified:  24/02/2020
- *
-*******************************************************/
+#include <stdint.h>
+#include <stdbool.h>
+#include "driverlib/i2c.h"
+#include "inc/hw_memmap.h"
+
 /*
  * I2C Control
  */

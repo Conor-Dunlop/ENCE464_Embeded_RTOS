@@ -1,10 +1,13 @@
-//*****************************************************************************
-//
-// adc_hal.c - Abstraction file to stand between ADC_read and the tivaware functions
-//              and pass values between them
-// Author:  Conor Dunlop
-//
-//*****************************************************************************
+/*
+ * adc_hal.c
+ *
+ *  Last Modified: 22/08/2024
+ *      Authors: Conor Dunlop
+ *
+ *  Abstraction file to stand between ADC_read and the tivaware functions
+ *  and pass values between them
+ *
+ */
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -12,18 +15,13 @@
 #include "inc/hw_types.h"
 #include "inc/hw_ints.h"
 #include "driverlib/adc.h"
-#include "driverlib/pwm.h"
-#include "driverlib/gpio.h"
 #include "driverlib/sysctl.h"
-#include "driverlib/systick.h"
 #include "driverlib/interrupt.h"
-#include "driverlib/debug.h"
-#include "utils/ustdlib.h"
-#include "adc_hal.h"
 #include "circ_buf_t.h"
-#include "synch.h"
+
+#include "adc_hal.h"
+
 #include "FreeRTOS.h"
-#include "task.h"
 
 #define ADC_BUF_SIZE 10
 

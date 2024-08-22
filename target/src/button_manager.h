@@ -1,17 +1,19 @@
 /*
  * button_manager.h
  *
- *  Created on: 1/04/2022
- *      Author: Daniel Rabbidge
+ *  Created on: 31/03/2022
+ *      Authors: Daniel Rabbidge
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood, Brennan Drach, Conor Dunlop
  *
- *  FitnessThur9-1
  */
 
 #ifndef BUTTON_MANAGER_H_
 #define BUTTON_MANAGER_H_
+
 #include "step_counter_main.h"
 #include "switches.h"
-
 
 // Init this library
 void btnInit(void);

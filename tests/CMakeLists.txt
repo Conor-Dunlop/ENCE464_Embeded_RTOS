@@ -23,3 +23,6 @@ add_unity_test(test_adc test_adc.c ${SRC_DIR}/ADC_read.c ${SRC_DIR}/adc_hal.c)
 target_include_directories(test_adc PRIVATE ${SRC_DIR} ${TIVAWARE_DIR} ${MOCK_DIR} ${RTOS_DIR})
 target_compile_definitions(test_adc PRIVATE PART_TM4C123GH6PM TESTING)
 
+add_unity_test(test_speed_tracker test_speed_tracker.c ${SRC_DIR}/speed_tracker.c )
+target_include_directories(test_speed_tracker PRIVATE ${SRC_DIR} ${MOCK_DIR})
+target_compile_definitions(test_speed_tracker PRIVATE)

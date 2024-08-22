@@ -1,17 +1,19 @@
+/*
+ * circ_buf_t.h
+ *
+ *  Created on: 08/03/2017
+ *      Authors: P.J. Bones UCECE
+ *
+ *  Support for a circular buffer of uint32_t values on the 
+ *  Tiva processor.
+ *
+ */
+
 #ifndef circ_buf_t_H_
 #define circ_buf_t_H_
 
-// *******************************************************
-// 
-// circ_buf_t.h
-//
-// Support for a circular buffer of uint32_t values on the 
-//  Tiva processor.
-// P.J. Bones UCECE
-// Last modified:  7.3.2017
-// 
-// *******************************************************
 #include <stdint.h>
+#include "stdlib.h"
 
 typedef struct circBuf_t circBuf_t;
 

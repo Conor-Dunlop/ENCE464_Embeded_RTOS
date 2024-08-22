@@ -1,17 +1,24 @@
 /*
  * display_manager.h
  *
- * Handles drawing to the device's screen, given its current state
- *
  *  Created on: 23/03/2022
- *      Author: Matthew Suter
+ *      Authors: Matthew Suter
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood, Brennan Drach, Conor Dunlop
  *
- *  FitnessThur9-1
+ *  Handles drawing to the device's screen, given its current state
+ *
  */
 
 #ifndef DISPLAY_MANAGER_H_
 #define DISPLAY_MANAGER_H_
 
+#include <stdlib.h>
+#include "utils/ustdlib.h"
+#include "OrbitOLED/OrbitOLEDInterface.h"
+
+#include "speed_tracker.h"
 #include "step_counter_main.h"
 
 

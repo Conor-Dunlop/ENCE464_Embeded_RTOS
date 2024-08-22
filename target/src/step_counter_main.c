@@ -1,12 +1,14 @@
 /*
- * Step_Counter_Main.c
+ * step_counter_main.c
  *
  *  Created on: 23/03/2022
  *      Authors: Matthew Suter, Daniel Rabbidge, Timothy Preston-Marshall
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood, Brennan Drach, Conor Dunlop
  *
- *  Main code for the ENCE361 step counter project
+ *  Main code for the ENCE464 Fitness Monitor v2 project
  *
- *  FitnessThur9-1
  */
 
 // Comment this out to disable serial plotting
@@ -15,40 +17,19 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include "inc/hw_memmap.h"
-#include "inc/hw_types.h"
-#include "inc/hw_ints.h"
 #include "driverlib/gpio.h"
 #include "driverlib/sysctl.h"
-#include "driverlib/systick.h"
-#include "driverlib/debug.h"
-#include "driverlib/pin_map.h"
-#include "utils/ustdlib.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "utils/ustdlib.h"
-#include "acc.h"
-#include "math.h"
 #include "circ_buf_v.h"
 #include "ADC_read.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "semphr.h"
 #include "synch.h"
-#include "queue.h"
-#include "switches.h"
 #include "buttons4.h"
-#include "timers.h"
+#include "display_manager.h"
+#include "button_manager.h"
 
 #ifdef SERIAL_PLOTTING_ENABLED
 #include "serial_sender.h"
 #endif //SERIAL_PLOTTING_ENABLED
-
-#include "accl_manager.h"
-#include "display_manager.h"
-#include "button_manager.h"
-#include "speed_tracker.h"
 
 #include "step_counter_main.h"
 
@@ -56,10 +37,11 @@
  * Constants and types
  **********************************************************/
 #define RATE_SYSTICK_HZ 250
-#define RATE_IO_HZ 75
+#define RATE_IO_HZ 150
 #define POT_HZ 50
 #define RATE_ACCL_HZ 200
 #define RATE_BLINK_HZ 10
+#define RATE_RESET_HZ 10
 #define RATE_DISPLAY_UPDATE_HZ 5
 #define FLASH_MESSAGE_TIME 3/2 // seconds
 
@@ -90,8 +72,6 @@ vector3_t getAcclData (void);
 /*******************************************
  *      Globals
  *******************************************/
-// unsigned long ticksElapsed = 0; // Incremented once every system tick. Must be read with SysTickIntHandler(), or you can get garbled data!
-
 deviceStateInfo_t deviceState; // Stored as one global so it can be accessed by other helper libs within this main module
 
 // Converted frequencies for vTaskDelayUntil
@@ -100,6 +80,7 @@ const TickType_t xIOFrequency = pdMS_TO_TICKS(1000 / RATE_IO_HZ);
 const TickType_t xPotFrequency = pdMS_TO_TICKS(1000 / POT_HZ);
 const TickType_t xDispFrequency = pdMS_TO_TICKS(1000 / RATE_DISPLAY_UPDATE_HZ);
 const TickType_t xBlinkFrequency = pdMS_TO_TICKS(1000 / RATE_BLINK_HZ);
+const TickType_t xResetFrequency = pdMS_TO_TICKS(1000 / RATE_RESET_HZ);
 
 #ifdef SERIAL_PLOTTING_ENABLED
 const TickType_t xSerialFrequency = pdMS_TO_TICKS(1000 / RATE_SERIAL_PLOT_HZ);
@@ -110,6 +91,8 @@ unsigned long lastIoProcess= 0;
 unsigned long lastPotProcess = 0;
 unsigned long lastAcclProcess = 0;
 unsigned long lastDisplayProcess = 0;
+unsigned long lastBlinkProcess = 0;
+unsigned long lastResetProcess = 0;
 
 volatile bool timerResetAfterExpiry = false;  // Flag to check if the timer was reset after expiry
 
@@ -136,8 +119,8 @@ void flashMessage(char* toShow)
     }
 }
 
+// Code to execute when the timer expires
 void vTimerCallback(TimerHandle_t xTimer) {
-    // Code to execute when the timer expires
     xSemaphoreGive(xPromptSemaphore);
 }
 
@@ -154,7 +137,7 @@ void initClock (void)
 
 void initTimer (void)
 {
-    // Create 'prompt to move' timer
+    // Initialise 'prompt to move' timer
     const TickType_t xTimerPeriod = pdMS_TO_TICKS(5000);
 
     xMoveTimer = xTimerCreate("MovementTimer", // Name of the timer
@@ -168,7 +151,7 @@ void initTimer (void)
 
 void initLED (void)
 {   
-    // Initialise RED LED GPIO output
+    // Initialise red LED GPIO peripheral
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1);
 }
@@ -178,38 +161,63 @@ void initLED (void)
  * FreeRTOS System Tasks
  ***********************************************************/
 
-// Blink Red LED
-void blink(void* args) {
-    (void)args; // unused
+// Check for RESET
+static void check_reset(void* args)
+{
+    static TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
 
-    TickType_t wake_time = xTaskGetTickCount();
+    for (;;) {
+        // Delay task
+        vTaskDelayUntil(&xLastWakeTime, xResetFrequency);
+
+        lastResetProcess = xLastWakeTime;
+
+        if (xSemaphoreTake(xResetSemaphore, 0) == pdTRUE) {
+            flashMessage("Reset!");
+        }  
+    }
+} 
+
+
+
+// Blink Red LED
+static void blink(void* args) 
+{
+    static TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
 
     for(;;) {
+        // Delay task
+        vTaskDelayUntil(&xLastWakeTime, xBlinkFrequency);
+
+        lastBlinkProcess = xLastWakeTime;
+
+        // Turn on red LED if given semaphore from the prompt timer
         if (xSemaphoreTake(xPromptSemaphore, 0) == pdTRUE) {
             GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, -1);
         }  
-
-        vTaskDelayUntil(&wake_time, xBlinkFrequency);
     }
 }
 
-// Poll the buttons
+// Poll the buttons and switches
 static void poll_butt_and_switch(void *arg)
 {
     static TickType_t xLastWakeTime;
-    lastIoProcess = xLastWakeTime;
-
     xLastWakeTime = xTaskGetTickCount();
+
     for (;;) {
+        // Delay task
         vTaskDelayUntil(&xLastWakeTime, xIOFrequency);
 
-        updateButtons();
-        updateSwitch();
+        lastIoProcess = xLastWakeTime;
 
+        // Update deviceState depending on button states
         for (enum butNames button = 0; button < NUM_BUTS; button++) {
             btnUpdateState(&deviceState, button);
         }
 
+        // Update deviceState depending on switch states
         for (enum SWNames switches = 0; switches < NUM_SW; switches++) {
             swUpdateState(&deviceState, switches);
         }
@@ -217,15 +225,16 @@ static void poll_butt_and_switch(void *arg)
 }
 
 // Update newGoal based on potentiometer state
-static void update_newGoal(void* args) {
+static void update_newGoal(void* args) 
+{
     static TickType_t xLastWakeTime;
-    lastPotProcess = xLastWakeTime;
-
     xLastWakeTime = xTaskGetTickCount ();
+
     for (;;) {
+        // Delay task
         xTaskDelayUntil(&xLastWakeTime, xPotFrequency);
-        
-        lastIoProcess = xLastWakeTime;
+
+        lastPotProcess = xLastWakeTime;
 
         pollADC();
 
@@ -247,7 +256,8 @@ static void update_newGoal(void* args) {
 }
 
 // Read and process the accelerometer
-static void read_process_accl(void* args) {
+static void read_process_accl(void* args) 
+{
     static TickType_t xLastWakeTime;
     static uint8_t stepHigh = false;
     uint16_t combined;
@@ -332,7 +342,8 @@ static void write_to_display(void* args) {
 #ifdef SERIAL_PLOTTING_ENABLED
 static void send_USB_via_serial(void* args) {
 
-    TickType_t xLastWakeTime = xTaskGetTickCount ();
+    static TickType_t xLastWakeTime;
+    uint16_t secondsElapsed;
     vector3_t mean;
 
     for (;;) {
@@ -356,6 +367,10 @@ static void left_running_protection(void* args)
     while(1)
     {
         xLastWakeTime = xTaskGetTickCount ();
+
+        if (xLastWakeTime < lastBlinkProcess) {
+            lastBlinkProcess = 0;
+        }
 
         if (xLastWakeTime < lastIoProcess) {
             lastIoProcess = 0;
@@ -415,43 +430,44 @@ int main(void)
     btnInit();
     acclInit();
     initADC();
-    initButtons();
     initTimer();
     initLED();
-    initSpeedTracker(&SpeedTracker);
 
     #ifdef SERIAL_PLOTTING_ENABLED
     SerialInit ();
     #endif // SERIAL_PLOTTING_ENABLED
 
     // Create tasks
-    xTaskCreate(&blink, "blink", 512, NULL, 1, NULL);
+    xTaskCreate(check_reset, "CheckToReset", 128, NULL, 2, NULL);
 
-    xTaskCreate(write_to_display, "WriteToDisplay", 512, NULL, 2, NULL);
+    xTaskCreate(blink, "blink", 128, NULL, 1, NULL);
 
-    xTaskCreate(update_newGoal, "UpdateNewGoal", 512, NULL, 1, NULL);
+    xTaskCreate(write_to_display, "WriteToDisplay", 256, NULL, 2, NULL);
 
-    xTaskCreate(poll_butt_and_switch, "PollButtAndSW", 512, NULL, 1, NULL);
+    xTaskCreate(update_newGoal, "UpdateNewGoal", 256, NULL, 1, NULL);
 
-    xTaskCreate(read_process_accl, "ReadProcessAccl", 512, NULL, 1, NULL);
+    xTaskCreate(poll_butt_and_switch, "PollButtAndSW", 256, NULL, 1, NULL);
+
+    xTaskCreate(read_process_accl, "ReadProcessAccl", 256, NULL, 1, NULL);
 
     #ifdef SERIAL_PLOTTING_ENABLED
-    xTaskCreate(send_USB_via_serial, "USBViaSerial", 512, NULL, 1, NULL);
+    xTaskCreate(send_USB_via_serial, "USBViaSerial", 256, NULL, 1, NULL);
     #endif // SERIAL_PLOTTING_ENABLED
 
-    xTaskCreate(left_running_protection, "TicksProtection", 512, NULL, 1, NULL);
+    xTaskCreate(left_running_protection, "TicksProtection", 256, NULL, 1, NULL);
 
     // Start the scheduler
     vTaskStartScheduler();
-
-    // Should never reach here
-    return 0;
+    return 0; // Should never reach here
 }
 
 void vAssertCalled( const char * pcFile, unsigned long ulLine ) {
     (void)pcFile; // unused
     (void)ulLine; // unused
-    vTaskSuspendAll();
-    displayUpdate(deviceState, 0, true);
-    while (true);
+
+    vTaskSuspendAll(); // Suspend all tasks
+
+    displayUpdate(deviceState, 0, true); // Display ASSERT ERROR
+
+    while (true); // Safe
 }

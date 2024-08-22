@@ -1,9 +1,14 @@
 /*
- * Acceleration Manager
- * Matt Suter, Tim Preston-Marshall, Daniel Rabbidge
- * ENCE361 2022
+ * accl_manager.c
  *
- * FitnessThur9-1
+ *  Created on: 23/03/2022
+ *      Authors: Matthew Suter, Daniel Rabbidge, Timothy Preston-Marshall
+ * 
+ *  Last Modified: 22/08/2024
+ *      Authors: Flynn Underwood, Brennan Drach, Conor Dunlop
+ *
+ *  Acceleration Manager
+ *
  */
 
 #include <stdint.h>
@@ -57,23 +62,29 @@ void acclInit(void)
 // Run periodically to store acceleration to the circular buffer
 void acclProcess(void)
 {   
-    static uint16_t old_combined = 0;
+    static uint16_t old_combined = 0; // Keep track of previous combined value
 
     vector3_t acceleration = getAcclData();
     writeVecCircBuf(acclBuffer, acceleration);
 
     uint16_t combined = acclMean();
 
-    if (abs(old_combined - combined) > 5) {
+    if (abs(old_combined - combined) > 5) // Compare current and previous values to reduce motion sensitivity
+    {
+        // Send data to be processed in main
         xQueueSend(accl_q, &combined, portMAX_DELAY);
+
         // Reset timer
         xTimerReset(xMoveTimer, 0);
+
         // Signal to stop move prompt
         xSemaphoreTake(xPromptSemaphore, 0);
+
+        // Turn off red LED
         GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 1);
     }
     
-    old_combined = combined;
+    old_combined = combined; // Update old_combined
 }
 
 

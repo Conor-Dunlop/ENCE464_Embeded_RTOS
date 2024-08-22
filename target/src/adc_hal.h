@@ -1,26 +1,22 @@
+/*
+ * adc_hal.h
+ *
+ *  Last Modified: 22/08/2024
+ *      Authors: Conor Dunlop
+ *
+ *  The handler for the ADC hardware abstraction layer.
+ *  Takes calls form ADC_read then calls tivaware to pass values between.
+ *
+ */
+
 #ifndef adc_hal_H_
 #define adc_hal_H_
 
-// #define ADC_ID_1 1
-
 #include <stdint.h>
-#include "circ_buf_t.h"
-//Need to change name
-
-//*****************************************************************************
-//
-// The handler for the ADC hardware abstraction layer.
-// Takes calls form ADC_read then calls tivaware to pass values between.
-//
-//*****************************************************************************
-
-//typedef void(*callback)(uint32_t);
 
 enum ADC_ID{
     ADC_ID_1 = 1
 };
-
-
 
 void adc_hal_register (uint32_t adc_id, void(*callback)(uint32_t));
 
